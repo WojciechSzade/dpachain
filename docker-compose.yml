@@ -1,0 +1,29 @@
+x-base: &backend-base
+    build: .
+    env_file:
+    - .env
+    depends_on:
+    - dpachain-db
+    volumes:
+    - ./src:/opt/src
+    
+services:
+  dpachain-db:
+    container_name: dpachain-db
+    env_file:
+    - .env
+    image: mongodb/mongodb-community-server:latest
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=user
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    ports:
+      - "27017:27017"
+    restart: always
+  
+  dpachain-api:
+    <<: *backend-base
+    container_name: dpachain-api
+    ports:
+      - "8000:8000"
+    image: dpachain-api
+    restart: unless-stopped

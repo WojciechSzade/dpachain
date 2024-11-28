@@ -1,0 +1,103 @@
+import hashlib
+from datetime import datetime
+
+class Data:
+    def __init__(self, number, title, author, pdf_hash):
+        self.number = number
+        self.title = title
+        self.author = author
+        self.pdf_hash = pdf_hash
+        self.hash = self.calculate_hash()
+        
+    def calculate_hash(self):
+        hash_string = str(self.number) + str(self.title) + str(self.author) + str(self.pdf_hash)
+        return hashlib.sha256(hash_string.encode()).hexdigest()
+
+class Block:
+    def __init__(self, index, timestamp, data, previous_hash):
+        self.index = index
+        self.timestamp = timestamp
+        self.data = Data(data['number'], data['title'], data['author'], data['pdf_hash'])
+        self.previous_hash = previous_hash
+        self.hash = self.calculate_hash()
+
+    def calculate_hash(self):
+        hash_string = str(self.index) + str(self.timestamp) + str(self.data.calculate_hash()) + str(self.previous_hash)
+        return hashlib.sha256(hash_string.encode()).hexdigest()
+    
+    def is_valid(self):
+        if type(self.index) != int:
+            raise ValueError('Block invalid! Index must be an integer')
+        if type(self.timestamp) != datetime:
+            raise ValueError('Block invalid! Timestamp must be a datetime object')
+        if type(self.data) != Data:
+            raise ValueError('Block invalid! Data must be a Data object')
+        if type(self.previous_hash) != str:
+            raise ValueError('Block invalid! Previous hash must be a string')
+        if type(self.hash) != str:
+            raise ValueError('Block invalid! Hash must be a string')
+        if self.hash != self.calculate_hash():
+            raise ValueError('Block invalid! Hash is incorrect')
+        return True
+        
+
+
+class Blockchain:
+    def __init__(self):
+        self.chain = [self.create_genesis_block()]
+        
+    def create_genesis_block(self):
+        return Block(0, datetime.now(), {'number': 0, 'title': 'Genesis Block', 'author': 'Genesis Block', 'pdf_hash': 'Genesis Block'}, '0')
+    
+    def get_latest_block(self):
+        return self.chain[-1]
+    
+    def add_block(self, new_block):
+        new_block.previous_hash = self.get_latest_block().hash
+        new_block.hash = new_block.calculate_hash()
+        if new_block.is_valid() != True:
+            raise ValueError('Block invalid! Cannot add to chain')
+        if self.is_valid(new_block) != True:
+            raise ValueError('Block invalid! Cannot add block')
+        self.chain.append(new_block)
+        
+    def is_valid(self, new_block):
+        for block in self.chain:
+            if block.index == new_block.index:
+                raise ValueError('Block invalid! Index already exists in chain')
+            if block.hash == new_block.hash:
+                raise ValueError('Block invalid! Hash already exists in chain')
+        return True
+    
+    def is_block_in_chain(self, checked_block):
+        for block in self.chain:
+            if block.hash == checked_block.hash:
+                return True
+        return False
+    
+
+    
+blockchain = Blockchain()
+article1 = Block(1, datetime.now(), {'number': 1, 'title': 'Article 1', 'author': 'Author 1', 'pdf_hash': 'pdf_hash1'}, '0')
+blockchain.add_block(article1)
+article2 = Block(2, datetime.now(), {'number': 2, 'title': 'Article 2', 'author': 'Author 2', 'pdf_hash': 'pdf_hash2'}, '0')
+blockchain.add_block(article2)
+print("Is article 2 in chain?", blockchain.is_block_in_chain(article2))
+new_article = Block(1, datetime.now(), {'number': 1, 'title': 'Article 1', 'author': 'Author 1', 'pdf_hash': 'pdf_hash1'}, '0')
+print("Is new article in chain?", blockchain.is_block_in_chain(new_article))
+new_article = Block(1, datetime.now(), {'number': 1, 'title': 'Article 1', 'author': 'Author 2', 'pdf_hash': 'pdf_hash1'}, '0')
+print("Is new article in chain?", blockchain.is_block_in_chain(new_article))
+new_article = Block(4, datetime.now(), {'number': 5, 'title': '123 1', 'author': 'Author 2', 'pdf_hash': 'pdf_hash1'}, '0')
+print("Is new article in chain?", blockchain.is_block_in_chain(new_article))
+                                          
+for block in blockchain.chain:
+    print("Block number:", block.index)
+    print("Block hash:", block.hash)
+    print("Block previous hash:", block.previous_hash)
+    print("Block data number:", block.data.number)
+    print("Block data title:", block.data.title)
+    print("Block data author:", block.data.author)
+    print("Block data pdf hash:", block.data.pdf_hash)
+    print("Block timestamp:", block.timestamp)
+    print("Block is valid:", block.is_valid())
+    print("\n")
