@@ -19,10 +19,10 @@ wait_seconds = 1
 # )
 def init_db():
     client = MongoClient(str(settings.MONGODB_URL))
-    db = client[settings.MONGODB_DB]
     try:
         client.server_info()
     except Exception as e:
         logger.error(e)
         raise e
-    return db
+    logger.info("Connection to MongoDB established")
+    return client

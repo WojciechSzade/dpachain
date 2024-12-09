@@ -32,9 +32,10 @@ COPY poetry.lock pyproject.toml ./
 
 RUN poetry install $(test "$CONFIG" == production && echo "--only=main") --no-interaction --no-ansi
 
-COPY ./src ./src
+WORKDIR /opt/src
 
-WORKDIR /src
+COPY ./src .
+
 
 EXPOSE 8000
 

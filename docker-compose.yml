@@ -11,14 +11,14 @@ services:
   dpachain-db:
     container_name: dpachain-db
     env_file:
-    - .env
+      - .env
     image: mongodb/mongodb-community-server:latest
     environment:
       - MONGO_INITDB_ROOT_USERNAME=user
       - MONGO_INITDB_ROOT_PASSWORD=password
     ports:
       - "27017:27017"
-    restart: always
+    restart: unless-stopped
   
   dpachain-api:
     <<: *backend-base
