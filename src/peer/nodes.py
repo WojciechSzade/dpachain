@@ -35,11 +35,14 @@ class PeersManager:
 
     def get_peers_list(self):
         return self.peers_list
-    
+
     def save_peers_list(self):
         with open(self.filename, "w") as f:
             for name, state in self.peers_list.items():
                 f.write(f"{name} {state}\n")
+                
+    def get_active_peers(self):
+        return [name for name, state in self.peers_list.items() if state == "Active"]
 
 
 class NodeService:
@@ -51,7 +54,7 @@ class NodeService:
 
     async def start(self, port):
         self.node = await self.__create_node(port)
-        # await self._set_node_nickname(self.nickname)
+        await self._set_node_nickname(self.nickname)
         await self._connect_to_nodes()
 
     async def stop(self):
@@ -75,8 +78,8 @@ class NodeService:
             try:
                 pipe = await self.node.connect(peer_name)
                 if pipe is None:
-                    logger.log(f"Failed to connect to {peer_name} with previous state {self.peers_manager.get_peer_state(peer_name)}")
-                    self.peers_manager.set_node_state(peer_name, "Inactive")
+                    logger.info(f"Failed to connect to {peer_name} with previous state {self.peers_manager.get_peer_state(peer_name)}")
+                    self.peers_manager.set_peer_state(peer_name, "Inactive")
                     continue
                 logger.info(f"Connected to {peer_name}")
                 logger.info(f"Pipe is {pipe.sock}")
@@ -102,7 +105,7 @@ class NodeService:
         try:
             logger.info("Creating node...")
             node = P2PNode(port=port)
-            node.add_msg_cb(self._add_echo_support)
+            node.add_msg_cb(self.__add_echo_support)
             await node.start(out=True)
             logger.info(f"Node started = {node.addr_bytes}")
             logger.info(f"Node port = {node.listen_port}",)
@@ -111,7 +114,7 @@ class NodeService:
             logger.error(f"Failed to create node: {e}")
             raise e
 
-    async def _add_echo_support(self, msg, client_tup, pipe):
+    async def __add_echo_support(self, msg, client_tup, pipe):
         if b"ECHO" == msg[:4]:
             print()
             print("\tGot echo proto msg: " + to_s(msg) +
