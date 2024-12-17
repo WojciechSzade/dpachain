@@ -2,6 +2,9 @@ import logging
 from p2pd import *
 from tenacity import after_log, before_log, before_sleep_log, retry, stop_after_attempt, wait_fixed
 
+from src.core.models import Block
+from src.peer.protocols import PeerListProtocol
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -40,15 +43,33 @@ class PeersManager:
         with open(self.filename, "w") as f:
             for name, state in self.peers_list.items():
                 f.write(f"{name} {state}\n")
-                
+
     def get_active_peers(self):
         return [name for name, state in self.peers_list.items() if state == "Active"]
+    
+    def set_own_state(self, nickname):
+        if nickname in self.peers_list.keys():
+            self.peers_list[nickname] = "Own"
+            
+    def get_peerlist_hash(self):
+        hash = self.__calculate_hash_sum(self.get_peers_names())
+        return hash
+    
+    @staticmethod
+    def __calculate_hash_sum(elements):
+        hashsum = 0
+        for e in elements:
+            hashsum += int(hashlib.sha256(str(e).encode()).hexdigest(), 16)
+            hashsum %= 2**256
+        final_hashsum = hashlib.sha256(str(hashsum).encode()).hexdigest()
+        return final_hashsum
 
 
 class NodeService:
     def __init__(self, peers_manager: PeersManager, nickname):
         self.node = None
         self.peers_manager = peers_manager
+        self.peer_list_protocol = PeerListProtocol(self.peers_manager)
         self.nickname = nickname
         self.pipes = []
 
@@ -64,6 +85,7 @@ class NodeService:
         try:
             node_name = await self.node.nickname(nickname)
             logger.info(f"Node name set to: {node_name}")
+            self.peers_manager.set_own_state(node_name)
         except:
             logger.error("Failed to set node name")
 
@@ -75,6 +97,8 @@ class NodeService:
     )
     async def _connect_to_nodes(self):
         for peer_name in self.peers_manager.get_peers_names():
+            if self.peers_manager.get_peer_state(peer_name) == "Own":
+                continue
             try:
                 pipe = await self.node.connect(peer_name)
                 if pipe is None:
@@ -106,6 +130,7 @@ class NodeService:
             logger.info("Creating node...")
             node = P2PNode(port=port)
             node.add_msg_cb(self.__add_echo_support)
+            node.add_msg_cb(self.peer_list_protocol.add_peer_protocole_support)
             await node.start(out=True)
             logger.info(f"Node started = {node.addr_bytes}")
             logger.info(f"Node port = {node.listen_port}",)

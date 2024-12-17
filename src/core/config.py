@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     MONGODB_PASSWORD: str
     P2P_PORT: int = 44666
     NODES_LIST_FILE: str = "nodes_list.txt"
-    HOST_NODE_NAME: str = "host-" + secrets.token_hex(4)
+    HOST_NODE_NAME: str = "host-666" # +  secrets.token_hex(4)
 
     @computed_field
     @property
