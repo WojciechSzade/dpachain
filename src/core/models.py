@@ -2,7 +2,7 @@ import logging
 import hashlib
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -49,17 +49,7 @@ class BlockchainService:
         return list(self.blocks.find())
 
 
-class Block(BaseModel):
-    previous_block: str
-    _id: int
-    timestamp: float
-    pdf_hash: str
-    author: str
-    date_of_defense: datetime
-    university: str
-    faculty: str
-    supervisor: str
-
+class Block():
     def __init__(self, previous_block: str, _id: int, pdf_hash: str, author: str, date_of_defense: datetime.date, university: str, faculty: str, supervisor: str):
         self.previous_block = previous_block
         self._id = _id
@@ -97,3 +87,18 @@ class Block(BaseModel):
     @staticmethod
     def calculate_pdf_hash(pdf_file):
         return hashlib.sha256(pdf_file).hexdigest()
+    
+    @property
+    def dict(self):
+        return {
+            "previous_block": self.previous_block,
+            "_id": self._id,
+            "timestamp": self.timestamp,
+            "pdf_hash": self.pdf_hash,
+            "author": self.author,
+            "date_of_defense": self.date_of_defense,
+            "university": self.university,
+            "faculty": self.faculty,
+            "supervisor": self.supervisor,
+            "hash": self.hash
+        }

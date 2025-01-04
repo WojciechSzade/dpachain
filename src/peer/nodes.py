@@ -4,6 +4,7 @@ from tenacity import after_log, before_log, before_sleep_log, retry, stop_after_
 
 from src.core.models import Block
 from src.peer.protocols import PeerListProtocol
+from src.core.config import settings
 
 
 logging.basicConfig(level=logging.INFO)
@@ -28,13 +29,17 @@ class PeersManager:
         return peers_list
 
     def get_peers_names(self):
-        return self.peers_list.keys()
+        return [key for key in self.peers_list.keys()]
 
     def set_peer_state(self, name, state):
         self.peers_list[name] = state
 
     def get_peer_state(self, name):
-        return self.peers_list[name]
+        if name in self.peers_list:
+            return self.peers_list[name]
+        else:
+            logger.error(f"Peer {name} not found in peers list")
+            return "Unknown"
 
     def get_peers_list(self):
         return self.peers_list
@@ -45,14 +50,13 @@ class PeersManager:
                 f.write(f"{name} {state}\n")
 
     def get_active_peers(self):
-        return [name for name, state in self.peers_list.items() if state == "Active"]
+        return [name for name, state in self.peers_list.items() if state == "Active" or state == "Own"]
     
     def set_own_state(self, nickname):
-        if nickname in self.peers_list.keys():
-            self.peers_list[nickname] = "Own"
+        self.peers_list.update({nickname: "Own"})
             
     def get_peerlist_hash(self):
-        hash = self.__calculate_hash_sum(self.get_peers_names())
+        hash = self.__calculate_hash_sum(self.get_active_peers())
         return hash
     
     @staticmethod
@@ -63,6 +67,17 @@ class PeersManager:
             hashsum %= 2**256
         final_hashsum = hashlib.sha256(str(hashsum).encode()).hexdigest()
         return final_hashsum
+    
+    def parse_peer_list_message(self, peerlist):
+        for name in peerlist:
+            if name not in self.get_peers_names() and name != self.get_own_name():
+                self.peers_list.update({name: "Received"})
+                
+    def get_own_name(self):
+        for name, state in self.peers_list.items():
+            if state == "Own":
+                return name
+        return settings.HOST_NODE_NAME
 
 
 class NodeService:
@@ -76,7 +91,7 @@ class NodeService:
     async def start(self, port):
         self.node = await self.__create_node(port)
         await self._set_node_nickname(self.nickname)
-        await self._connect_to_nodes()
+        await self.connect_to_nodes()
 
     async def stop(self):
         await self.node.close()
@@ -86,6 +101,7 @@ class NodeService:
             node_name = await self.node.nickname(nickname)
             logger.info(f"Node name set to: {node_name}")
             self.peers_manager.set_own_state(node_name)
+            
         except:
             logger.error("Failed to set node name")
 
@@ -95,7 +111,7 @@ class NodeService:
         after=after_log(logger, logging.WARN),
         before_sleep=before_sleep_log(logger, logging.INFO)
     )
-    async def _connect_to_nodes(self):
+    async def connect_to_nodes(self):
         for peer_name in self.peers_manager.get_peers_names():
             if self.peers_manager.get_peer_state(peer_name) == "Own":
                 continue
@@ -108,12 +124,13 @@ class NodeService:
                 logger.info(f"Connected to {peer_name}")
                 logger.info(f"Pipe is {pipe.sock}")
                 self.pipes.append(pipe)
+                await self.peer_list_protocol.sync_peerlist_with_pipe(pipe)
                 self.peers_manager.set_peer_state(peer_name, "Active")
-                await self.pipes[-1].send(b"ECHO hello world \n")
-                logger.info(f"Sent message to {peer_name}")
-                buf = await self.pipes[-1].recv()
-                logger.info(f"Received message from {peer_name}: {buf}")
             except Exception as e:
+                if str(e).startswith("Could not fetch"):
+                    logger.info(f"Failed to connect to {peer_name} with previous state {self.peers_manager.get_peer_state(peer_name)}")
+                    self.peers_manager.set_peer_state(peer_name, "Inactive")
+                    continue
                 logger.error(f"Failed to connect to {peer_name}: {e}")
                 self.peers_manager.set_peer_state(peer_name, "Unknown")
                 continue

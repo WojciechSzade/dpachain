@@ -13,7 +13,7 @@ from pydantic_core import MultiHostUrl
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file="../.env",
+        env_file=".env",
     )
     PROJECT_NAME: str
     MONGODB_SERVER: str
@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     P2P_PORT: int = 44666
     NODES_LIST_FILE: str = "nodes_list.txt"
     HOST_NODE_NAME: str = "host-666" # +  secrets.token_hex(4)
+    DEBUG: bool = False
 
     @computed_field
     @property
