@@ -1,0 +1,64 @@
+@startuml
+
+autoactivate on
+
+actor "Admin user" as User
+boundary "Admin panel" as GUI
+control "Private node API" as API
+database MongoDB
+entity Service
+entity "P2P Node" as P2P
+entity "Node" as RN
+entity "Other nodes" as ON
+
+User -> Service ** : start()
+activate Service
+Service -> MongoDB : connection_to_db()
+return database_connection
+Service -> API ** : start()
+activate API
+return api
+Service -> P2P ** : start()
+activate P2P
+P2P -> P2P:start_and_open_for_connections()
+deactivate P2P
+group at any time node will respond
+  ON -> P2P: any_request()
+  return response
+end
+return node
+Service -> P2P: sync_blockchain()
+loop until_chain_is_synced
+  P2P -> ON : connect_to_all_nodes_and_ask_for_chain_size(nodes_list.txt)
+  return (connections_to_nodes, chain_size)
+  P2P -> P2P: select_best_node()
+  return node_ip
+  P2P -> RN ** : connect_to_node()
+  activate RN
+  return connection_to_node
+  P2P -> RN : sync_nodes_list(nodes_list_hash)
+  return nodes_list.txt
+  P2P -> RN : compare_blockchain(own_length, own_last_hash)
+  return (lenght, last_hash)
+  loop foreach missing block
+    P2P -> RN: ask_for_block(index)
+    return block
+    P2P -> Service: validate_block(block)
+    Service -> Service: validate_block_with_authenticated_users_keys(block)
+    return is_valid
+    alt#Gold  #LightBlue block is valid
+      Service -> MongoDB: add_block(block)
+      return block_saved_msg
+      P2P -[hidden]> Service
+      return continue
+    else #Pink
+      Service -> Service: mark_node_as_unsafe(Node)
+      return 
+      return break_loop
+    end
+  end
+  destroy RN
+  return block_is_synced
+end
+return service_ready
+@enduml

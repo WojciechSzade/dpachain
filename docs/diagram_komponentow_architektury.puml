@@ -1,0 +1,27 @@
+@startuml
+
+skin rose
+database "MongoDB" {
+component [Blockchain Database] as DB
+}
+component [Data Access] as DA
+component [Blockchain Manager] as BM
+component [Administrative Acess] as AA
+cloud {
+component [Other users in network] as users
+}
+
+
+interface IReadonlyAccess
+interface IFullacess
+
+DB -- IReadonlyAccess
+DB -- IFullacess
+
+DA --( IReadonlyAccess
+BM --( IFullacess
+
+BM <.up.> users : P2P connection
+AA -up-> BM
+
+@enduml

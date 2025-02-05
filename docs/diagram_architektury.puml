@@ -1,0 +1,35 @@
+@startuml
+
+package "Database Layer" {
+    database "MongoDB" {
+        [Blockchain Data]
+    }
+}
+
+package "Public API Layer" {
+    [Public API] #LightGreen
+    [Web Clients] #LightBlue
+    [Public API] --> [Web Clients]
+    [Public API] --> [MongoDB] : reads
+}
+
+
+
+package "Private Layer" {
+    [Private Node API] #Pink
+    [Service] #Violet
+    [P2P Node] #Yellow
+    [Admin user] #Blue
+    [Service] --> [MongoDB] : modifies
+    [Service] --> [Private Node API]
+    [Private Node API] --> [Admin user]
+}
+
+package "P2P Network" {
+    [Other System Users] #Orange
+    [P2P Node] ..> [Other System Users] : communicates
+    [Service] --> [P2P Node]
+    [Other System Users] ..> [P2P Node] : syncs
+}
+
+@enduml

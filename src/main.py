@@ -12,7 +12,7 @@ from src.peer.nodes import NodeService, PeersManager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.database_client = init_db()
-    app.state.blockchain = BlockchainService(app.state.database_client)
+    app.state.blockchain = BlockchainService(app.state.database_client, settings.NETWORK_ID, settings.CHAIN_VERSION), 
     yield
 
 app = FastAPI(

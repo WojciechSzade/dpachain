@@ -109,3 +109,12 @@ class PeerListProtocol:
             "Received invalid peerlist - unexpected start of message")
         logger.warning(f"Received: {buf}")
         return None
+
+
+class BlockchainProtocol:
+    def __init__(self, blockchain_service):
+        self.blockchain_service = blockchain_service
+        
+    async def add_blockchain_protocol_support(self, msg, client_tup, pipe):
+        if msg.startswith(b"BLOCK"):
+            pass

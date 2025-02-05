@@ -9,9 +9,11 @@ logger = logging.getLogger(__name__)
 
 
 class BlockchainService:
-    def __init__(self, client):
+    def __init__(self, client, network_id, chain_version):
         self.client = client
         self.db = self.client.blockchain
+        self.network_id = network_id
+        self.chain_version = chain_version
         self.blocks = self.db.blocks
         self.transactions = []
         self.generate_genesis_block()
@@ -22,20 +24,43 @@ class BlockchainService:
         block = Block(
             "None",  # previous_block
             0,  # _id
+            "0",  # diploma_type
             "0",  # pdf_hash
-            "0",  # author
+            "0",  # authors
+            "0",  # title
+            "0",  # language
+            "0",  # discipline
+            0,  # is_defended
             datetime.min.date(),  # date_of_defense
             "0",  # university
             "0",  # faculty
-            "0"  # supervisor
+            "0",  # supervisor
+            "0",  # reviewer
+            self.chain_version  # chain_version
         )
         self.blocks.insert_one(block.dict)
 
-    def create_new_block(self, pdf_hash: str, author: str, date_of_defense: datetime.date, university: str, faculty: str, supervisor: str):
+    def create_new_block(self, diploma_type: str, pdf_hash: str, authors: (list[str] | str), title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), additional_info: (str | None) = None):
         previous_block = self.get_latest_block()['hash']
         _id = self.get_latest_block()['_id'] + 1
-        block = Block(previous_block, _id, pdf_hash, author,
-                      date_of_defense, university, faculty, supervisor)
+        block = Block(
+            previous_block,
+            _id,
+            diploma_type,
+            pdf_hash,
+            authors,
+            title,
+            language,
+            discipline,
+            is_defended,
+            date_of_defense,
+            university,
+            faculty,
+            supervisor,
+            reviewer,
+            self.chain_version,
+            additional_info
+        )
         try:
             self.blocks.insert_one(block.dict)
         except Exception as e:
@@ -50,21 +75,47 @@ class BlockchainService:
 
 
 class Block():
-    def __init__(self, previous_block: str, _id: int, pdf_hash: str, author: str, date_of_defense: datetime.date, university: str, faculty: str, supervisor: str):
+    def __init__(self, previous_block: str, _id: int, diploma_type: str, pdf_hash: str, authors: (list[str] | str), title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), chain_version: str, additional_info: (str | None) = None):
         self.previous_block = previous_block
         self._id = _id
         self.timestamp = datetime.now().timestamp()
+        self.diploma_type = diploma_type
         self.pdf_hash = pdf_hash
-        self.author = author
+        self.author = authors
         self.date_of_defense = datetime.combine(
             date_of_defense, datetime.min.time())
+        self.title = title
+        self.language = language
+        self.discipline = discipline
+        self.is_defended = is_defended
         self.university = university
         self.faculty = faculty
         self.supervisor = supervisor
-        self.hash = self.calculate_merkle_root([self.previous_block, self._id, self.timestamp,
-                                                self.pdf_hash, self.author, self.date_of_defense, self.university, self.faculty, self.supervisor])
+        self.reviewer = reviewer
+        self.additional_info = additional_info
+        self.chain_version = chain_version
+        self.hash = self.calculate_merkle_root([
+            self.previous_block,
+            self._id,
+            self.timestamp,
+            self.diploma_type,
+            self.pdf_hash,
+            self.author,
+            self.date_of_defense,
+            self.title,
+            self.language,
+            self.discipline,
+            self.is_defended,
+            self.university,
+            self.faculty,
+            self.supervisor,
+            self.reviewer,
+            self.additional_info,
+            self.chain_version
+        ])
 
-    def calculate_merkle_root(self, data):
+    @staticmethod
+    def calculate_merkle_root(data):
         def _hash_pair(a, b):
             sum = (str(a) + str(b)).encode()
 
@@ -82,12 +133,12 @@ class Block():
         if len(data) % 2 == 1:
             hash_list.append(_hash_pair(data[-1], data[-1]))
 
-        return self.calculate_merkle_root(hash_list)
+        return Block.calculate_merkle_root(hash_list)
 
     @staticmethod
     def calculate_pdf_hash(pdf_file):
         return hashlib.sha256(pdf_file).hexdigest()
-    
+
     @property
     def dict(self):
         return {

@@ -1,0 +1,79 @@
+@startuml
+
+autoactivate on
+
+actor "Admin user" as User
+boundary "Admin panel" as GUI
+control "Administrative API" as API
+database MongoDB
+entity "Blockchain Manager" as BM
+entity "P2P Node" as P2P
+entity "Node" as RN
+entity "Other nodes" as ON
+
+User -> GUI: add_new_block(detailed_information)
+GUI -> API: add_new_block(detailed_information)
+API -> BM: add_new_block(detailed_information)
+loop until_block_is_in_chain
+  BM -> P2P: sync_blockchain()
+  ... blockchain_syncing ...
+  return blockchain_synced
+  BM -> BM: prepare_new_block(detailed_information)
+  return new_block
+  BM -> BM: sign_new_block(own_signature)
+  return signed_new_block
+  BM -> MongoDB: add_block(signed_new_block)
+  return block_saved_msg
+  BM -> P2P: share_new_block(nodes_list.txt)
+  P2P -> ON: connect_to_all_nodes_and_ask_for_chain_size(nodes_list.txt)
+  return (connection_to_nodes, chain_size)
+  P2P -> P2P: create_list_of_nodes_sorted_by_best(connection_to_nodes, chain_size, nodes_list.txt)
+  return nodes_list
+  loop foreach node in nodes_list
+    P2P -> RN ** : connect_to_node(node)
+    activate RN
+    return connection_to_node
+    P2P ->> RN: ask_to_sync(blockchain_size)
+    deactivate RN
+    destroy RN
+  end
+  loop 10 times
+    P2P -> ON: connect_to_all_nodes_and_ask_for_chain_size()
+    return (connection_to_nodes, chain_size)
+    P2P -> P2P: select_best_node(connections_to_nodes, chain_size, nodes_list.txt)
+    return node_ip
+    alt best_node_blockchain_size >= own_chain_size
+      P2P -> RN ** : connect_to_node(node_ip)
+      activate RN
+      return connection_to_node
+      P2P -> RN : ask_for_specific_block(own_chain_size)
+      return block
+      P2P -> BM: compare_block_with_new_block(block)
+      break block == new_block
+        return true
+        destroy RN
+        return block_is_in_chain
+        return block_added
+        return block_added
+        return block_added
+      end
+      P2P -[hidden]> RN **
+      deactivate RN
+      User -[hidden]> GUI
+      GUI -[hidden]> API
+      API -[hidden]> BM
+      BM -[hidden]> P2P
+      P2P -[hidden]> BM
+      return false
+      destroy RN
+    else best_node_blockchain_size < own_chain_size
+      ... wait 30s ...
+    end
+  end
+  return block_not_addded
+  BM -> MongoDB: remove_last_block()
+  return block_removed_msg
+  
+  
+end
+@enduml
