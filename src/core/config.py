@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     NETWORK_ID: str 
     CHAIN_VERSION: str
+    SIGNING_KEY_NAME: str
 
     @computed_field
     @property
@@ -38,6 +39,13 @@ class Settings(BaseSettings):
             port=self.MONGODB_PORT,
             path="",
         )
+    
+    @computed_field
+    @property
+    def SIGNING_PRIVATE_KEY(self) -> str:
+        with open("signing_keys/" + self.SIGNING_KEY_NAME, "rb") as private_key_file:
+            return private_key_file.read()
+        
 
 
 settings = Settings()
