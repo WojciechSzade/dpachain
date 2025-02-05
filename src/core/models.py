@@ -8,22 +8,27 @@ from Cryptodome.Signature import PKCS1_v1_5
 from Cryptodome.Hash import SHA256
 import base64
 
+from src.core.utils import require_authorized
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 class BlockchainService:
-    def __init__(self, client, network_id, chain_version, signing_private_key):
-        self.client = client
-        self.db = self.client.blockchain
+    def __init__(self, database, network_id, chain_version, authorized, signing_private_key = None):
+        self.db = database.blockchain
         self.network_id = network_id
         self.chain_version = chain_version
-        self.signing_private_key = RSA.import_key(signing_private_key)
         self.blocks = self.db.blocks
         self.transactions = []
-        self.generate_genesis_block()
+        self.authorized = authorized
+        if self.authorized:
+            if signing_private_key is None:
+                raise ValueError("signing_private_key is required for authorized blockchain service")
+            self.signing_private_key = RSA.import_key(signing_private_key)
 
+    @require_authorized
     def generate_genesis_block(self):
         if self.blocks.count_documents({}) > 0:
             return
@@ -47,6 +52,7 @@ class BlockchainService:
         )
         self.blocks.insert_one(block.dict)
 
+    @require_authorized
     def create_new_block(self, diploma_type: str, pdf_hash: str, authors: (list[str] | str), title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), additional_info: (str | None) = None):
         previous_block = self.get_latest_block()['hash']
         _id = self.get_latest_block()['_id'] + 1
@@ -80,13 +86,14 @@ class BlockchainService:
 
     def get_all_blocks(self):
         return list(self.blocks.find())
-    
+
+    @require_authorized
     def sign_hash_with_private_key(self, hash):
         encrypted_hash = SHA256.new(hash.encode('utf-8'))
-        signature = PKCS1_v1_5.new(self.signing_private_key).sign(encrypted_hash)
+        signature = PKCS1_v1_5.new(
+            self.signing_private_key).sign(encrypted_hash)
         result = base64.b64encode(signature).decode()
         return result
-        
 
 
 class Block():
@@ -178,3 +185,25 @@ class Block():
             "hash": self.hash,
             "signed_hash": self.signed_hash
         }
+    
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            data["previous_block"],
+            data["_id"],
+            data["diploma_type"],
+            data["pdf_hash"],
+            data["author"],
+            data["title"],
+            data["language"],
+            data["discipline"],
+            data["is_defended"],
+            data["date_of_defense"],
+            data["university"],
+            data["faculty"],
+            data["supervisor"],
+            data["reviewer"],
+            data["chain_version"],
+            data["signing_function"],
+            data["additional_info"]
+        )

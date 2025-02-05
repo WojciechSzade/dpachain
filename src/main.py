@@ -12,7 +12,7 @@ from src.peer.nodes import NodeService, PeersManager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.database_client = init_db()
-    app.state.blockchain = BlockchainService(app.state.database_client, settings.NETWORK_ID, settings.CHAIN_VERSION, settings.SIGNING_PRIVATE_KEY)
+    app.state.blockchain = BlockchainService(app.state.database_client, settings.NETWORK_ID, settings.CHAIN_VERSION, settings.AUTHORIZED, settings.SIGNING_PRIVATE_KEY if settings.AUTHORIZED else None)
     yield
 
 app = FastAPI(
@@ -32,7 +32,7 @@ async def entry():
     
     fastapi_serv_task = asyncio.ensure_future(server.serve())
     
-    app.state.node = NodeService(PeersManager(settings.NODES_LIST_FILE), settings.HOST_NODE_NAME)
+    app.state.node = NodeService(PeersManager(app.state.database_client), settings.HOST_NODE_NAME, app.state.database_client)
     await app.state.node.start(settings.P2P_PORT)
     
     close_signal = asyncio.Event()

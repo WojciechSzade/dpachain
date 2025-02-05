@@ -22,11 +22,12 @@ class Settings(BaseSettings):
     MONGODB_PASSWORD: str
     P2P_PORT: int = 44666
     NODES_LIST_FILE: str = "nodes_list.txt"
-    HOST_NODE_NAME: str = "host-666" # +  secrets.token_hex(4)
+    HOST_NODE_NAME: str = "host-666" + secrets.token_hex(4)
     DEBUG: bool = False
-    NETWORK_ID: str 
+    NETWORK_ID: str
     CHAIN_VERSION: str
-    SIGNING_KEY_NAME: str
+    AUTHORIZED: bool = False
+    SIGNING_KEY_NAME: str = None
 
     @computed_field
     @property
@@ -39,13 +40,18 @@ class Settings(BaseSettings):
             port=self.MONGODB_PORT,
             path="",
         )
-    
+
     @computed_field
     @property
     def SIGNING_PRIVATE_KEY(self) -> str:
+        if not self.AUTHORIZED:
+            warnings.error("Unauthorized node, no signing key")
+            raise Exception("Unauthorized node")
+        if self.SIGNING_KEY_NAME is None:
+            warnings.error("No signing key name provided")
+            raise Exception("No signing key name provided")
         with open("signing_keys/" + self.SIGNING_KEY_NAME, "rb") as private_key_file:
             return private_key_file.read()
-        
 
 
 settings = Settings()
