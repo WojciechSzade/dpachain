@@ -1,49 +1,28 @@
-ARG PYTHON_VERSION=3.12
-ARG PYTHON_BUILD_VERSION=$PYTHON_VERSION-slim-bullseye
+FROM python:3.12
 
-FROM python:${PYTHON_BUILD_VERSION}
+# Configure Poetry
+ENV POETRY_VERSION=1.8.5
+ENV POETRY_HOME=/opt/poetry
+ENV POETRY_VENV=/opt/poetry-venv
+ENV POETRY_CACHE_DIR=/opt/.cache
 
-ARG USER_ID
-ARG GROUP_ID
+# Install poetry separated from system interpreter
+RUN python3 -m venv $POETRY_VENV \
+    && $POETRY_VENV/bin/pip install -U pip setuptools \
+    && $POETRY_VENV/bin/pip install poetry==${POETRY_VERSION}
 
-ENV CONFIG=${CONFIG} \
-  PYTHONFAULTHANDLER=1 \
-  PYTHONUNBUFFERED=1 \
-  PYTHONHASHSEED=random \
-  PIP_NO_CACHE_DIR=off \
-  PIP_DISABLE_PIP_VERSION_CHECK=on \
-  PIP_DEFAULT_TIMEOUT=100 \
-  # Poetry's configuration:
-  POETRY_NO_INTERACTION=1 \
-  POETRY_VIRTUALENVS_CREATE=false \
-  POETRY_CACHE_DIR='/var/cache/pypoetry' \
-  POETRY_HOME='/usr/local' \
-  POETRY_VERSION=1.8.4
+# Add `poetry` to PATH
+ENV PATH="${PATH}:${POETRY_VENV}/bin"
 
-RUN groupadd -g $GROUP_ID -o user && useradd -m -u $USER_ID -g user user
+WORKDIR /src
 
-RUN apt-get update -y && \
-    apt-get install -y && \
-    apt-get install -y --no-install-recommends netcat && \
-    apt-get clean && \
-    pip install poetry==$POETRY_VERSION
-        
+# Install dependencies
 COPY poetry.lock pyproject.toml ./
+RUN poetry install --no-interaction --no-cache
 
-RUN poetry install $(test "$CONFIG" == production && echo "--only=main") --no-interaction --no-ansi
-
-WORKDIR /opt/src
-
-COPY ./src .
-
+COPY . /src
 
 EXPOSE 8000
 
-USER user
-
-CMD ["poetry", "run", "fastapi", "dev", "main.py"]
-
-        
-
-
-    
+# Run your app
+CMD [ "poetry", "run", "fastapi", "run", "src/main.py" ]

@@ -5,6 +5,8 @@ from tenacity import after_log, before_log, before_sleep_log, retry, stop_after_
 from src.core.models import Block
 from src.peer.protocols import PeerListProtocol
 from src.core.config import settings
+from src.peer.models import Peer, PeerStatus
+from src.core.db import init_db
 
 
 logging.basicConfig(level=logging.INFO)
@@ -14,39 +16,41 @@ max_tries = 20  # 2 minutes
 
 
 class PeersManager:
-    def __init__(self, database):
-        self.db = database.blockchain
+    def __init__(self, database_url, authorized, public_key):
+        self.client_db = init_db(database_url)
+        self.db = self.client_db.blockchain
         self.peers = self.db.peers
-    def get_peers_names(self):
-        # return [key for key in self.peers_list.keys()]
-        pass
-        
-
-    def set_peer_state(self, name, state):
-        # self.peers_list[name] = state
-        pass
-
-    def get_peer_state(self, name):
-        # if name in self.peers_list:
-        #     return self.peers_list[name]
-        # else:
-        #     logger.error(f"Peer {name} not found in peers list")
-        #     return "Unknown"
-        pass
+        if self.peers.find_one({"nickname": settings.HOST_NODE_NAME}) is None:
+            self.own_peer = Peer(settings.HOST_NODE_NAME, PeerStatus.OWN,
+                                 is_authorized=authorized, is_banned=False, public_key=public_key)
+            self.peers.insert_one(self.own_peer.dict)
+        else:
+            self.own_peer = Peer.from_dict(self.peers.find_one(
+                {"nickname": settings.HOST_NODE_NAME}))
 
     def get_peers_list(self):
         return self.peers.find()
+    
+    def get_peer_by_name(self, name):
+        peer =  self.peers.find_one({"nickname": name})
+        if peer is None:
+            logger.error(f"Peer {name} not found")
+            raise ValueError(f"Peer {name} not found")
+        return peer
 
-    def save_peers_list(self):
-        with open(self.filename, "w") as f:
-            for name, state in self.peers_list.items():
-                f.write(f"{name} {state}\n")
+    def get_peers_names(self):
+        peers = self.get_peers_list()
+        return [peer["nickname"] for peer in peers]
+
+    def set_peer_state(self, name, state):
+        self.peers.update_one({"nickname": name}, {"$set": {"status": state.value}})
+
+    def get_peer_state(self, name):
+        return PeerStatus(self.get_peer_by_name(name)["status"])
 
     def get_active_peers(self):
-        return [name for name, state in self.peers_list.items() if state == "Active" or state == "Own"]
-
-    def set_own_state(self, nickname):
-        self.peers_list.update({nickname: "Own"})
+        peers = self.get_peers_list()
+        return [peer["nickname"] for peer in peers if peer["status"] == PeerStatus.ACTIVE.value or peer["status"] == PeerStatus.OWN.value] 
 
     def get_peerlist_hash(self):
         hash = self.__calculate_hash_sum(self.get_active_peers())
@@ -64,13 +68,10 @@ class PeersManager:
     def parse_peer_list_message(self, peerlist):
         for name in peerlist:
             if name not in self.get_peers_names() and name != self.get_own_name():
-                self.peers_list.update({name: "Received"})
+                self.peers.insert_one(Peer(name, PeerStatus.UNKNOWN).dict)
 
     def get_own_name(self):
-        for name, state in self.peers_list.items():
-            if state == "Own":
-                return name
-        return settings.HOST_NODE_NAME
+        return self.own_peer.nickname
 
 
 class NodeService:
@@ -93,7 +94,6 @@ class NodeService:
         try:
             node_name = await self.node.nickname(nickname)
             logger.info(f"Node name set to: {node_name}")
-            self.peers_manager.set_own_state(node_name)
 
         except:
             logger.error("Failed to set node name")
@@ -106,30 +106,27 @@ class NodeService:
     )
     async def connect_to_nodes(self):
         for peer_name in self.peers_manager.get_peers_names():
-            if self.peers_manager.get_peer_state(peer_name) == "Own":
+            if self.peers_manager.get_peer_state(peer_name) == PeerStatus.OWN:
                 continue
             try:
                 pipe = await self.node.connect(peer_name)
                 if pipe is None:
-                    logger.info(f"Failed to connect to {peer_name} with previous state {
-                                self.peers_manager.get_peer_state(peer_name)}")
-                    self.peers_manager.set_peer_state(peer_name, "Inactive")
+                    logger.info(f"Failed to connect to {peer_name} with previous state {self.peers_manager.get_peer_state(peer_name)}")
+                    self.peers_manager.set_peer_state(peer_name, PeerStatus.INACTIVE)
                     continue
                 logger.info(f"Connected to {peer_name}")
                 logger.info(f"Pipe is {pipe.sock}")
                 self.pipes.append(pipe)
                 await self.peer_list_protocol.sync_peerlist_with_pipe(pipe)
-                self.peers_manager.set_peer_state(peer_name, "Active")
+                self.peers_manager.set_peer_state(peer_name, PeerStatus.ACTIVE)
             except Exception as e:
                 if str(e).startswith("Could not fetch"):
-                    logger.info(f"Failed to connect to {peer_name} with previous state {
-                                self.peers_manager.get_peer_state(peer_name)}")
-                    self.peers_manager.set_peer_state(peer_name, "Inactive")
+                    logger.info(f"Failed to connect to {peer_name} with previous state {self.peers_manager.get_peer_state(peer_name)}")
+                    self.peers_manager.set_peer_state(peer_name, PeerStatus.INACTIVE)
                     continue
                 logger.error(f"Failed to connect to {peer_name}: {e}")
-                self.peers_manager.set_peer_state(peer_name, "Unknown")
+                self.peers_manager.set_peer_state(peer_name, PeerStatus.INACTIVE)
                 continue
-        self.peers_manager.save_peers_list()
 
     @retry(
         stop=stop_after_attempt(max_tries),

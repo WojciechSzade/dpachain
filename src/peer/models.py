@@ -20,7 +20,7 @@ class Peer:
     def dict(self):
         return {
             "nickname": self.nickname,
-            "status": self.status,
+            "status": self.status.value,
             "is_authorized": self.is_authorized,
             "is_banned": self.is_banned,
             "public_key": self.public_key
@@ -30,7 +30,7 @@ class Peer:
     def from_dict(cls, data: dict):
         return cls(
             data["nickname"],
-            data["status"],
+            PeerStatus(data["status"]),
             data["is_authorized"],
             data["is_banned"],
             data["public_key"]

@@ -11,7 +11,7 @@ from src.peer.nodes import NodeService, PeersManager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.database_client = init_db()
+    app.state.database_client = init_db(settings.MONGODB_URL)
     app.state.blockchain = BlockchainService(app.state.database_client, settings.NETWORK_ID, settings.CHAIN_VERSION, settings.AUTHORIZED, settings.SIGNING_PRIVATE_KEY if settings.AUTHORIZED else None)
     yield
 
@@ -27,12 +27,12 @@ def get_blockchain():
 app.include_router(router)
 
 async def entry():
-    config = uvicorn.Config(app)
+    config = uvicorn.Config(app, host=settings.HOST, port=settings.PORT)
     server = uvicorn.Server(config)
     
     fastapi_serv_task = asyncio.ensure_future(server.serve())
     
-    app.state.node = NodeService(PeersManager(app.state.database_client), settings.HOST_NODE_NAME, app.state.database_client)
+    app.state.node = NodeService(PeersManager(settings.MONGODB_URL, settings.AUTHORIZED, settings.SIGNING_PUBLIC_KEY if settings.AUTHORIZED else None), settings.HOST_NODE_NAME)
     await app.state.node.start(settings.P2P_PORT)
     
     close_signal = asyncio.Event()
