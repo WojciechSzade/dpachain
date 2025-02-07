@@ -8,15 +8,15 @@ from Cryptodome.Signature import PKCS1_v1_5
 from Cryptodome.Hash import SHA256
 import base64
 
-from src.core.utils import require_authorized
+from src.utils.utils import require_authorized
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class BlockchainService:
-    def __init__(self, database, network_id, chain_version, authorized, signing_private_key = None):
+class BlockManager:
+    def __init__(self, database, network_id, chain_version, authorized, signing_private_key=None):
         self.db = database.blockchain
         self.network_id = network_id
         self.chain_version = chain_version
@@ -25,7 +25,8 @@ class BlockchainService:
         self.authorized = authorized
         if self.authorized:
             if signing_private_key is None:
-                raise ValueError("signing_private_key is required for authorized blockchain service")
+                raise ValueError(
+                    "signing_private_key is required for authorized blockchain service")
             self.signing_private_key = RSA.import_key(signing_private_key)
 
     @require_authorized
@@ -185,7 +186,7 @@ class Block():
             "hash": self.hash,
             "signed_hash": self.signed_hash
         }
-    
+
     @classmethod
     def from_dict(cls, data: dict):
         return cls(

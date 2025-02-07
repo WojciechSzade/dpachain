@@ -9,13 +9,13 @@ class PeerStatus(Enum):
 
 
 class Peer:
-    def __init__(self, nickname: str, status: PeerStatus = PeerStatus.UNKNOWN, is_authorized: bool = False, is_banned: bool = False, public_key: str = None):
+    def __init__(self, nickname: str, status: PeerStatus = PeerStatus.UNKNOWN, is_authorized: bool = False, public_key: str = None, is_banned: bool = False,):
         self.nickname = nickname
         self.status = status
         self.is_authorized = is_authorized
-        self.is_banned = is_banned
         self.public_key = public_key
-    
+        self.is_banned = is_banned
+
     @property
     def dict(self):
         return {
@@ -25,7 +25,7 @@ class Peer:
             "is_banned": self.is_banned,
             "public_key": self.public_key
         }
-    
+
     @classmethod
     def from_dict(cls, data: dict):
         return cls(
@@ -35,4 +35,9 @@ class Peer:
             data["is_banned"],
             data["public_key"]
         )
-    
+
+    def is_valid(self):
+        return self.is_banned is False
+
+    def is_active(self):
+        return self.status == PeerStatus.ACTIVE or self.status == PeerStatus.OWN

@@ -46,9 +46,6 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def SIGNING_PRIVATE_KEY(self) -> str:
-        if not self.AUTHORIZED:
-            warnings.error("Unauthorized node, no signing key")
-            raise Exception("Unauthorized node")
         if self.SIGNING_KEY_NAME is None:
             warnings.error("No signing key name provided")
             raise Exception("No signing key name provided")
@@ -58,9 +55,6 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def SIGNING_PUBLIC_KEY(self) -> str:
-        if not self.AUTHORIZED:
-            warnings.error("Unauthorized node, no signing key")
-            raise Exception("Unauthorized node")
         if self.SIGNING_KEY_NAME is None:
             warnings.error("No signing key name provided")
             raise Exception("No signing key name provided")

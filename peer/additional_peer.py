@@ -1,7 +1,8 @@
 import logging 
 import uvicorn
 import asyncio
-from src.peer.nodes import NodeService, PeersManager
+from src.peer.nodes import NodeService
+from src.peer.peers import PeersManager
 import time
 
 logging.basicConfig(level=logging.INFO)
@@ -27,7 +28,6 @@ async def entry():
                 continue
             logger.info(f"Peerlist from pipe: {pipe_peerlist}")
             node_service.peers_manager.parse_peer_list_message(pipe_peerlist)
-            node_service.peers_manager.save_peers_list()
             
     
     

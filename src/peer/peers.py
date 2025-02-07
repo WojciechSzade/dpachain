@@ -10,9 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 class PeersManager:
-    def __init__(self, database_url, authorized, public_key):
-        self.client_db = init_db(database_url)
-        self.db = self.client_db.blockchain
+    def __init__(self, client_db, authorized, public_key):
+        self.db = client_db.blockchain
         self.peers = self.db.peers
         self.own_peer_name = settings.HOST_NODE_NAME
         if self.peers.find_one({"nickname": self.own_peer_name}) is None:
@@ -21,29 +20,33 @@ class PeersManager:
             self.peers.insert_one(own_peer.dict)
 
     def get_peers_list(self):
-        return self.peers.find()
+        peers = self.peers.find()
+        return [Peer.from_dict(peer) for peer in peers]
 
     def get_peer_by_name(self, name):
         peer = self.peers.find_one({"nickname": name})
         if peer is None:
             logger.error(f"Peer {name} not found")
-            raise ValueError(f"Peer {name} not found")
-        return peer
+        return Peer.from_dict(peer)
 
-    def get_peers_names(self):
+    def get_valid_peers_names(self):
         peers = self.get_peers_list()
-        return [peer["nickname"] for peer in peers]
+        return [peer.nickname for peer in peers if peer.is_valid()]
+
+    def get_valid_peers_to_connect(self):
+        peers = self.get_peers_list()
+        return [peer for peer in peers if peer.is_valid() and peer.status != PeerStatus.OWN]
 
     def set_peer_state(self, name, state):
         self.peers.update_one({"nickname": name}, {
                               "$set": {"status": state.value}})
 
     def get_peer_state(self, name):
-        return PeerStatus(self.get_peer_by_name(name)["status"])
+        return PeerStatus(self.get_peer_by_name(name).status)
 
     def get_active_peers(self):
         peers = self.get_peers_list()
-        return [peer["nickname"] for peer in peers if peer["status"] == PeerStatus.ACTIVE.value or peer["status"] == PeerStatus.OWN.value]
+        return [peer.nickname for peer in peers if peer.status == PeerStatus.ACTIVE or peer.status == PeerStatus.OWN]
 
     def get_peerlist_hash(self):
         hash = self.__calculate_hash_sum(self.get_active_peers())
@@ -60,7 +63,7 @@ class PeersManager:
 
     def parse_peer_list_message(self, peerlist):
         for name in peerlist:
-            if name not in self.get_peers_names() and name != self.get_own_name():
+            if name not in self.get_valid_peers_names() and name != self.get_own_name():
                 self.peers.insert_one(Peer(name, PeerStatus.UNKNOWN).dict)
 
     def get_own_peer(self):
