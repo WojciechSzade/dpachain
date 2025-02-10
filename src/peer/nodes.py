@@ -17,7 +17,7 @@ class NodeService:
     def __init__(self, peers_manager: PeersManager, nickname):
         self.node = None
         self.peers_manager = peers_manager
-        self.peer_list_protocol = ProtocolManager(self.peers_manager)
+        self.protocol_manager = ProtocolManager(self.peers_manager)
         self.nickname = nickname
         self.pipes = []
 
@@ -37,54 +37,58 @@ class NodeService:
         except:
             logger.error("Failed to set node name")
 
-    @retry(
-        stop=stop_after_attempt(max_tries),
-        before=before_log(logger, logging.INFO),
-        after=after_log(logger, logging.WARN),
-        before_sleep=before_sleep_log(logger, logging.INFO)
-    )
-    async def connect_to_nodes(self):
-        for peer_name in self.peers_manager.get_valid_peers_names():
-            if self.peers_manager.get_peer_state(peer_name) == PeerStatus.OWN:
-                continue
-            try:
-                pipe = await self.node.connect(peer_name)
-                if pipe is None:
-                    logger.info(
-                        f"Failed to connect to {peer_name} with previous state {self.peers_manager.get_peer_state(peer_name)}")
-                    self.peers_manager.set_peer_state(
-                        peer_name, PeerStatus.INACTIVE)
-                    continue
-                logger.info(f"Connected to {peer_name}")
-                logger.info(f"Pipe is {pipe.sock}")
-                self.pipes.append(pipe)
-                await self.peer_list_protocol.sync_peerlist_with_pipe(pipe)
-                self.peers_manager.set_peer_state(peer_name, PeerStatus.ACTIVE)
-            except Exception as e:
-                if str(e).startswith("Could not fetch"):
-                    logger.info(
-                        f"Failed to connect to {peer_name} with previous state {self.peers_manager.get_peer_state(peer_name)}")
-                    self.peers_manager.set_peer_state(
-                        peer_name, PeerStatus.INACTIVE)
-                    continue
-                logger.error(f"Failed to connect to {peer_name}: {e}")
-                self.peers_manager.set_peer_state(
-                    peer_name, PeerStatus.INACTIVE)
-                continue
+    # @retry(
+    #     stop=stop_after_attempt(max_tries),
+    #     before=before_log(logger, logging.INFO),
+    #     after=after_log(logger, logging.WARN),
+    #     before_sleep=before_sleep_log(logger, logging.INFO)
+    # )
+    # async def connect_to_nodes(self):
+    #     for peer_name in self.peers_manager.get_valid_peers_names():
+    #         if self.peers_manager.get_peer_state(peer_name) == PeerStatus.OWN:
+    #             continue
+    #         try:
+    #             pipe = await self.node.connect(peer_name)
+    #             if pipe is None:
+    #                 logger.info(
+    #                     f"Failed to connect to {peer_name} with previous state {self.peers_manager.get_peer_state(peer_name)}")
+    #                 self.peers_manager.set_peer_state(
+    #                     peer_name, PeerStatus.INACTIVE)
+    #                 continue
+    #             logger.info(f"Connected to {peer_name}")
+    #             logger.info(f"Pipe is {pipe.sock}")
+    #             self.pipes.append(pipe)
+    #             await self.peer_list_protocol.sync_peerlist_with_pipe(pipe)
+    #             self.peers_manager.set_peer_state(peer_name, PeerStatus.ACTIVE)
+    #         except Exception as e:
+    #             if str(e).startswith("Could not fetch"):
+    #                 logger.info(
+    #                     f"Failed to connect to {peer_name} with previous state {self.peers_manager.get_peer_state(peer_name)}")
+    #                 self.peers_manager.set_peer_state(
+    #                     peer_name, PeerStatus.INACTIVE)
+    #                 continue
+    #             logger.error(f"Failed to connect to {peer_name}: {e}")
+    #             self.peers_manager.set_peer_state(
+    #                 peer_name, PeerStatus.INACTIVE)
+    #             continue
 
     async def sync_chain(self):
         # connect to all nodes and ask for chain size
         nodes_list = self.peers_manager.get_valid_peers_to_connect()
+        responses = []
         for node in nodes_list:
-            pipe = await self.node.connect(node.nickname)
-            if pipe is None:
-                logger.info(
-                    f"Failed to connect to {node.nickname} with previous state {self.peers_manager.get_peer_state(node.nickname)}")
-                self.peers_manager.set_peer_state(node.nickname, PeerStatus.INACTIVE)
-                continue
-            logger.info(f"Connected to {node.nickname}")
-            logger.info(f"Pipe is {pipe.sock}")
-            
+            with await self.node.connect(node.nickname) as pipe:
+                if pipe is None:
+                    logger.info(
+                        f"Failed to connect to {node.nickname} with previous state {self.peers_manager.get_peer_state(node.nickname)}")
+                    self.peers_manager.set_peer_state(
+                        node.nickname, PeerStatus.INACTIVE)
+                    continue
+                logger.info(f"Connected to {node.nickname}")
+                logger.info(f"Pipe is {pipe.sock}")
+                chain_size = await self.protocol_manager.request_chain_size(pipe)
+                responses.append({"node": node, "chain_size": chain_size})
+
         # select best node
         # connect to it
         # sync node list
@@ -104,7 +108,7 @@ class NodeService:
         try:
             logger.info("Creating node...")
             node = P2PNode(port=port)
-            node.add_msg_cb(self.peer_list_protocol.add_peer_protocole_support)
+            node.add_msg_cb(self.protocol_manager.add_peer_protocole_support)
             await node.start(out=True)
             logger.info(f"Node started = {node.addr_bytes}")
             logger.info(f"Node port = {node.listen_port}",)

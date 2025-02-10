@@ -16,14 +16,14 @@ async def entry():
     await node_service.start(5000)
     await node_service.connect_to_nodes()
     for pipe in node_service.pipes:
-        pipe_peerhash = await node_service.peer_list_protocol.get_peerhash_from_pipe(pipe)
+        pipe_peerhash = await node_service.protocol_manager.get_peerhash_from_pipe(pipe)
         logger.info(f"Peerhash from pipe: {pipe_peerhash}")
         own_peerhash = node_service.peers_manager.get_peerlist_hash()
         logger.info(f"Own peerhash: {own_peerhash}")            
         if pipe_peerhash != own_peerhash:
             time.sleep(5)
             logger.info("Peerhashes are different")
-            pipe_peerlist = await node_service.peer_list_protocol.get_peerlist_from_pipe(pipe)
+            pipe_peerlist = await node_service.protocol_manager.get_peerlist_from_pipe(pipe)
             if pipe_peerlist is None:
                 continue
             logger.info(f"Peerlist from pipe: {pipe_peerlist}")
