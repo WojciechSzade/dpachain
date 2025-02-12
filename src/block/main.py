@@ -1,0 +1,25 @@
+from src.block.models import BlockManager
+from src.block.models import Block
+
+
+class BlockService:
+    def __init__(self, block_manager: BlockManager):
+        self.block_manager = block_manager
+        
+    def drop_all_blocks(self):
+        return self.block_manager.drop_all_blocks()
+
+    def get_latest_block(self):
+        return self.block_manager.get_latest_block()
+
+    def get_all_blocks(self):
+        return self.block_manager.get_all_blocks()
+
+    def generate_genesis_block(self):
+        return self.block_manager.generate_genesis_block()
+
+    def create_new_block(self, diploma_type, pdf_hash, authors, title, language, discipline, is_defended, date_of_defense, university, faculty, supervisor, reviewer, additional_info=None):
+        return self.block_manager.create_new_block(diploma_type, pdf_hash, authors, title, language, discipline, is_defended, date_of_defense, university, faculty, supervisor, reviewer, additional_info)
+
+    def calculate_pdf_hash(self, pdf_file):
+        return Block.calculate_pdf_hash(pdf_file)

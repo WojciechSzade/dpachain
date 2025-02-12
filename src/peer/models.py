@@ -6,6 +6,10 @@ class PeerStatus(Enum):
     ACTIVE = 1
     INACTIVE = 2
     OWN = 3
+    BANNED = 9
+
+    def __str__(self):
+        return self.name
 
 
 class Peer:
@@ -14,7 +18,6 @@ class Peer:
         self.status = status
         self.is_authorized = is_authorized
         self.public_key = public_key
-        self.is_banned = is_banned
 
     @property
     def dict(self):
@@ -22,7 +25,6 @@ class Peer:
             "nickname": self.nickname,
             "status": self.status.value,
             "is_authorized": self.is_authorized,
-            "is_banned": self.is_banned,
             "public_key": self.public_key
         }
 
@@ -32,12 +34,11 @@ class Peer:
             data["nickname"],
             PeerStatus(data["status"]),
             data["is_authorized"],
-            data["is_banned"],
             data["public_key"]
         )
 
     def is_valid(self):
-        return self.is_banned is False
+        return self.status != PeerStatus.BANNED
 
     def is_active(self):
         return self.status == PeerStatus.ACTIVE or self.status == PeerStatus.OWN

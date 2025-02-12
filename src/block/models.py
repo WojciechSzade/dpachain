@@ -9,6 +9,7 @@ from Cryptodome.Hash import SHA256
 import base64
 
 from src.utils.utils import require_authorized
+from src.block.errors import *
 
 
 logging.basicConfig(level=logging.INFO)
@@ -32,7 +33,9 @@ class BlockManager:
     @require_authorized
     def generate_genesis_block(self):
         if self.blocks.count_documents({}) > 0:
-            return
+            raise BlockAlreadyExistsError(
+                "genesis block", "Could not generate genesis block, because it already exists"
+            )
         block = Block(
             "None",  # previous_block
             0,  # _id
@@ -95,6 +98,9 @@ class BlockManager:
             self.signing_private_key).sign(encrypted_hash)
         result = base64.b64encode(signature).decode()
         return result
+
+    def drop_all_blocks(self):
+        self.blocks.delete_many({})
 
 
 class Block():

@@ -6,9 +6,10 @@ import datetime
 from fastapi import File
 
 
-from src.core.main import BlockchainManager
-from src.peer.nodes import NodeService
-from src.utils.dependencies import get_blockchain, get_node_service
+from src.block.main import BlockService
+from src.node.main import NodeService
+from src.peer.main import PeerService
+from src.utils.dependencies import get_block_service, get_node_service, get_peer_service
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,23 +18,63 @@ router = APIRouter()
 
 
 @router.post("/admin/drop_all_blocks")
-def drop_all_blocks(blockchain: BlockchainManager = Depends(get_blockchain)):
-    blockchain.blocks.delete_many({})
+def drop_all_blocks(block_service: BlockService = Depends(get_block_service)):
+    try:
+        block_service.drop_all_blocks()
+    except Exception as e:
+        return {"message": f"Failed to drop blocks: {e}"}
     return {"message": "All blocks have been dropped!"}
 
 
 @router.get("/admin/generate_genesis_block")
-def generate_genesis_block(blockchain: BlockchainManager = Depends(get_blockchain)):
-    blockchain.generate_genesis_block()
+def generate_genesis_block(block_service: BlockService = Depends(get_block_service)):
+    block_service.generate_genesis_block()
     return {"message": "Genesis block has been generated!"}
 
 
 @router.post("/create_new_block")
-def generate_next_block(diploma_type: str, pdf_file: Annotated[bytes, File()], authors: (list[str] | str), title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), additional_info: (str | None) = None, blockchain: BlockchainManager = Depends(get_blockchain)):
-    pdf_hash = BlockchainManager.calculate_pdf_hash(pdf_file)
+def generate_next_block(diploma_type: str, pdf_file: Annotated[bytes, File()], authors: (list[str] | str), title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), additional_info: (str | None) = None, block_service: BlockService = Depends(get_block_service)):
+    pdf_hash = block_service.calculate_pdf_hash(pdf_file)
     try:
-        blockchain.create_new_block(diploma_type, pdf_hash, authors, title, language, discipline,
-                                    is_defended, date_of_defense, university, faculty, supervisor, reviewer, additional_info)
+        block_service.create_new_block(diploma_type, pdf_hash, authors, title, language, discipline,
+                                       is_defended, date_of_defense, university, faculty, supervisor, reviewer, additional_info)
     except Exception as e:
         return {"message": f"Failed to create block: {e}"}
     return {"message": "Block has been generated!"}
+
+
+@router.post("/admin/add_new_peer")
+def add_new_peer(nickname: str, is_authorized: bool, public_key: str, peer_service: PeerService = Depends(get_peer_service)):
+    peer_service.add_new_peer(nickname, is_authorized, public_key)
+    return {"message": "Peer has been added!"}
+
+
+@router.get("/admin/get_peers_list")
+def get_peers_list(peer_service: PeerService = Depends(get_peer_service)):
+    return peer_service.get_peers_list()
+
+
+@router.post("/admin/remove_peer")
+def remove_peer(nickname: str, peer_service: PeerService = Depends(get_peer_service)):
+    msg = peer_service.remove_peer(nickname)
+    if msg is None:
+        return {"message": "Peer has been removed!"}
+    return {"message": msg}
+
+
+@router.post("/admin/ban_peer")
+def ban_peer(nickname: str, peer_service: PeerService = Depends(get_peer_service)):
+    peer_service.ban_peer(nickname)
+    return {"message": "Peer has been banned!"}
+
+
+@router.post("/admin/unban_peer")
+def unban_peer(nickname: str, peer_service: PeerService = Depends(get_peer_service)):
+    peer_service.unban_peer(nickname)
+    return {"message": "Peer has been unbanned!"}
+
+
+@router.post("/admin/sync_chain")
+async def sync_chain(node_service: NodeService = Depends(get_node_service)):
+    await node_service.sync_chain()
+    return {"message": "Chain has been synchronized!"}

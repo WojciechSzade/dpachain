@@ -1,9 +1,12 @@
 import logging
 
+from src.block.main import BlockService
 from src.core.db import init_db
-from src.core.models import BlockManager, Block
-from src.peer.nodes import NodeService
+from src.block.models import BlockManager
+from src.node.nodes import NodeManager
+from src.peer.main import PeerService
 from src.peer.peers import PeersManager
+from src.node.main import NodeService
 
 
 class BlockchainManager:
@@ -14,22 +17,16 @@ class BlockchainManager:
             self.db, network_id, chain_version, authorized, private_key)
         self.peer_manager = PeersManager(
             self.client_db, authorized, own_public_key)
-        self.node_service = NodeService(self.peer_manager, own_node_name)
+        self.node_manager = NodeManager(self.peer_manager, own_node_name)
 
-    def start_node_service(self, port):
-        return self.node_service.start(port)
+    async def start_node_service(self, p2p_port):
+        await self.node_manager.start(p2p_port)
 
-    def get_latest_block(self):
-        return self.block_manager.get_latest_block()
 
-    def get_all_blocks(self):
-        return self.block_manager.get_all_blocks()
-
-    def generate_genesis_block(self):
-        return self.block_manager.generate_genesis_block()
-
-    def create_new_block(self, diploma_type, pdf_hash, authors, title, language, discipline, is_defended, date_of_defense, university, faculty, supervisor, reviewer, additional_info=None):
-        return self.block_manager.create_new_block(diploma_type, pdf_hash, authors, title, language, discipline, is_defended, date_of_defense, university, faculty, supervisor, reviewer, additional_info)
-
-    def calculate_pdf_hash(self, pdf_file):
-        return Block.calculate_pdf_hash(pdf_file)
+class BlockchainService:
+    def __init__(self, blockchain_manager):
+        self.blockchain_manager = blockchain_manager
+        self.block_service = BlockService(
+            self.blockchain_manager.block_manager)
+        self.peer_service = PeerService(self.blockchain_manager.peer_manager)
+        self.node_service = NodeService(self.blockchain_manager.node_manager)

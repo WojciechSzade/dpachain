@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     NODES_LIST_FILE: str = "nodes_list.txt"
-    HOST_NODE_NAME: str = "host-666" + secrets.token_hex(4)
+    HOST_NODE_NAME: str = "host_node" + secrets.token_hex(4)
     DEBUG: bool = False
     NETWORK_ID: str
     CHAIN_VERSION: str

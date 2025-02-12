@@ -1,11 +1,27 @@
 from fastapi import Request
 
-def get_blockchain(request: Request):
+
+def check_if_service_started(request: Request):
+    def wrapper():
+        if not request.app.state.service_started:
+            raise Exception("Service is not started")
+
+
+@check_if_service_started
+def get_blockchain_service(request: Request):
     return request.app.state.blockchain
 
-def get_node_service(request: Request):
-    return request.app.state.node
 
-def get_database_client():
-    from src.main import database_client
-    return database_client
+@check_if_service_started
+def get_block_service(request: Request):
+    return request.app.state.blockchain.block_service
+
+
+@check_if_service_started
+def get_peer_service(request: Request):
+    return request.app.state.blockchain.peer_service
+
+
+@check_if_service_started
+def get_node_service(request: Request):
+    return request.app.state.blockchain.node_service
