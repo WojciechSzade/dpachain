@@ -1,12 +1,12 @@
 import logging
 
-from src.block.main import BlockService
+from src.block.service import BlockService
 from src.core.db import init_db
-from src.block.models import BlockManager
-from src.node.nodes import NodeManager
-from src.peer.main import PeerService
-from src.peer.peers import PeersManager
-from src.node.main import NodeService
+from src.block.manager import BlockManager
+from src.node.manager import NodeManager
+from src.peer.service import PeerService
+from src.peer.manager import PeersManager
+from src.node.service import NodeService
 
 
 class BlockchainManager:
@@ -17,7 +17,7 @@ class BlockchainManager:
             self.db, network_id, chain_version, authorized, private_key)
         self.peer_manager = PeersManager(
             self.client_db, authorized, own_public_key)
-        self.node_manager = NodeManager(self.peer_manager, own_node_name)
+        self.node_manager = NodeManager(self.peer_manager, own_node_name, self.block_manager)
 
     async def start_node_service(self, p2p_port):
         await self.node_manager.start(p2p_port)

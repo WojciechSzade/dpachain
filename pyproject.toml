@@ -7,7 +7,7 @@ readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "3.12.8"
+python = "3.12.9"
 fastapi = {extras = ["standard"], version = "^0.115.5"}
 pymongo = "^4.10.1"
 tenacity = "^9.0.0"
@@ -16,9 +16,6 @@ python-multipart = "^0.0.19"
 p2pd = "^3.1.0"
 netifaces = "^0.11.0"
 pycryptodomex = "^3.21.0"
-
-[tool.poetry.dev-dependencies]
-
 
 [build-system]
 requires = ["poetry-core"]

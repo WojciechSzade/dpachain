@@ -6,9 +6,9 @@ import datetime
 from fastapi import File
 
 
-from src.block.main import BlockService
-from src.node.main import NodeService
-from src.peer.main import PeerService
+from src.block.service import BlockService
+from src.node.service import NodeService
+from src.peer.service import PeerService
 from src.utils.dependencies import get_block_service, get_node_service, get_peer_service
 
 logging.basicConfig(level=logging.INFO)
@@ -21,9 +21,9 @@ router = APIRouter()
 def drop_all_blocks(block_service: BlockService = Depends(get_block_service)):
     try:
         block_service.drop_all_blocks()
+        return {"message": "All blocks have been dropped!"}
     except Exception as e:
-        return {"message": f"Failed to drop blocks: {e}"}
-    return {"message": "All blocks have been dropped!"}
+        return {"message": f"Failed to drop blocks: {str(e)}"}
 
 
 @router.get("/admin/generate_genesis_block")
@@ -76,5 +76,18 @@ def unban_peer(nickname: str, peer_service: PeerService = Depends(get_peer_servi
 
 @router.post("/admin/sync_chain")
 async def sync_chain(node_service: NodeService = Depends(get_node_service)):
-    await node_service.sync_chain()
-    return {"message": "Chain has been synchronized!"}
+    logger.info("Syncing chain...")
+    try:
+        await node_service.sync_chain()
+        return {"message": "Chain has been synced!"}
+    except Exception as e:
+        # return {"message": f"Failed to sync chain: {e}"}
+        raise e
+
+@router.post("/admin/change_node_nickname")
+async def change_node_nickname(nickname: str, node_service: NodeService = Depends(get_node_service)):
+    try:
+        await node_service.change_node_nickname(nickname)
+        return {"message": "Node nickname has been changed!"}
+    except Exception as e:
+        return {"message": f"Failed to change node nickname: {e}"}

@@ -1,7 +1,6 @@
 import logging
 from p2pd import *
 
-from src.core.config import settings
 from src.peer.models import Peer, PeerStatus
 from src.core.db import init_db
 from src.peer.errors import *
@@ -14,13 +13,9 @@ class PeersManager:
     def __init__(self, client_db, authorized, public_key):
         self.db = client_db.blockchain
         self.peers = self.db.peers
-        self.own_peer_name = settings.HOST_NODE_NAME
-        own_peer = None
-        try:
-            self.add_new_peer(self.own_peer_name, authorized,
-                              public_key, PeerStatus.OWN)
-        except PeerAlreadyExistsError:
-            pass
+        self.own_peer_name = None
+        self.AUTHORIZED = authorized
+        self.PUBLIC_KEY = public_key
 
     def get_peers_list(self):
         peers = self.peers.find()
@@ -55,10 +50,13 @@ class PeersManager:
         return [peer.nickname for peer in peers if peer.status == PeerStatus.ACTIVE or peer.status == PeerStatus.OWN]
 
     def add_new_peer(self, nickname, is_authorized, public_key, status=PeerStatus.UNKNOWN):
-        if self.get_peer_by_nickname(nickname) is not None:
-            raise PeerAlreadyExistsError(nickname)
         new_peer = Peer(nickname, status, is_authorized, public_key)
-        self.peers.insert_one(new_peer.dict)
+        result = self.peers.update_one(
+            {"nickname": nickname},
+            {"$set": new_peer.dict},
+            upsert=True)
+        if result.matched_count > 0:
+            raise PeerAlreadyExistsError(nickname)
 
     def remove_peer(self, nickname):
         peer = self.get_peer_by_nickname(nickname)
@@ -82,4 +80,22 @@ class PeersManager:
         if self.get_peer_state(nickname) != PeerStatus.BANNED:
             logger.warning(f"Peer {nickname} is not banned")
             return
-        self.__set_peer_status(nickname, PeerStatus.UNKNOWN)
+        self.set_peer_status(nickname, PeerStatus.UNKNOWN)
+
+    def _set_own_peer(self, nickname):
+        if self.own_peer_name is not None:
+            raise OwnPeerAlreadyExistsError(self.own_peer_name)
+        self.own_peer_name = nickname
+        self.add_new_peer(nickname, self.AUTHORIZED,
+                          self.PUBLIC_KEY, PeerStatus.OWN)
+
+    def change_own_peer_name(self, nickname):
+        if self.own_peer_name is None:
+            return self._set_own_peer(nickname)
+        self.set_peer_status(self.own_peer_name, PeerStatus.UNKNOWN)
+        self.add_new_peer(nickname, self.AUTHORIZED,
+                          self.PUBLIC_KEY, PeerStatus.OWN)
+        self.own_peer_name = nickname
+
+    def get_own_peer_name(self):
+        return self.own_peer_name

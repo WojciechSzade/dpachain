@@ -1,7 +1,7 @@
-FROM python:3.12
+FROM python:3.12.9
 
 # Configure Poetry
-ENV POETRY_VERSION=1.8.5
+ENV POETRY_VERSION=2.1.1
 ENV POETRY_HOME=/opt/poetry
 ENV POETRY_VENV=/opt/poetry-venv
 ENV POETRY_CACHE_DIR=/opt/.cache
@@ -22,7 +22,8 @@ RUN poetry install --no-interaction --no-cache
 
 COPY . /src
 
-EXPOSE 8000
+# Expose dynamic port
+EXPOSE ${PORT}
 
-# Run your app
-CMD [ "poetry", "run", "fastapi", "run", "src/main.py" ]
+# Run your app dynamically on the specified port
+CMD ["sh", "-c", "poetry run fastapi dev src/main.py --port ${PORT}"]

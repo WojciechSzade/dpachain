@@ -32,3 +32,11 @@ class PeerRemovalError(PeerError):
 
     def __init__(self, nickname: str, message: str):
         super().__init__(f"Removing peer {nickname} failed.\n" + message)
+
+
+class OwnPeerAlreadyExistsError(PeerError):
+    """Raised when own peer already exists."""
+
+    def __init__(self, nickname: str):
+        self.nickname = nickname
+        super().__init__(f"Own peer {nickname} already exists")

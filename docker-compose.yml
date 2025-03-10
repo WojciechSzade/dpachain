@@ -1,15 +1,18 @@
-x-base: &backend-base
+x-backend-base: &backend-base
   build: .
-  env_file:
-    - .env
+  volumes:
+    - ./:/src        # Mount the entire project directory
   depends_on:
     - dpachain-db
-  volumes:
-    - ./src:/opt/src
+    - dpachain-db2
+  environment:
+    - PORT=${PORT}
+    - MONGO_URI=${MONGO_URI}
+
 
 services:
   dpachain-db:
-    # container_name: dpachain-db
+    container_name: dpachain-db
     env_file:
       - .env
     image: mongodb/mongodb-community-server:latest
@@ -17,13 +20,44 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=user
       - MONGO_INITDB_ROOT_PASSWORD=password
     ports:
-      - "${MONGO_PORT:-27017}:27017"
+      - "27017:27017"
     restart: unless-stopped
 
   dpachain-api:
     <<: *backend-base
-    # container_name: dpachain-api
+    container_name: dpachain-api
+    env_file:
+      - .env
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - MONGO_URI=mongodb://user:password@dpachain-db:27017/
+    image: dpachain-api
+    restart: unless-stopped
+
+  dpachain-db2:
+    container_name: dpachain-db2
+    env_file:
+      - .env2
+    image: mongodb/mongodb-community-server:latest
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=user
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    ports:
+      - "27018:27017"
+    command: --port 27017
+    restart: unless-stopped
+
+  dpachain-api2:
+    <<: *backend-base
+    container_name: dpachain-api2
+    env_file:
+      - .env2
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+      - MONGO_URI=mongodb://user:password@dpachain-db2:27017/
     image: dpachain-api
     restart: unless-stopped

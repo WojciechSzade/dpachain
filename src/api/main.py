@@ -1,10 +1,8 @@
-from typing import Annotated
 import logging
-import datetime
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends
 
-from src.block.main import BlockService
+from src.block.service import BlockService
 from src.utils.dependencies import get_block_service
 
 logging.basicConfig(level=logging.INFO)
