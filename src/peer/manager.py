@@ -49,7 +49,7 @@ class PeersManager:
         peers = self.get_peers_list()
         return [peer.nickname for peer in peers if peer.status == PeerStatus.ACTIVE or peer.status == PeerStatus.OWN]
 
-    def add_new_peer(self, nickname, is_authorized, public_key, status=PeerStatus.UNKNOWN):
+    def add_new_peer(self, nickname, is_authorized=False, public_key=None, status=PeerStatus.UNKNOWN):
         new_peer = Peer(nickname, status, is_authorized, public_key)
         result = self.peers.update_one(
             {"nickname": nickname},
@@ -99,3 +99,6 @@ class PeersManager:
 
     def get_own_peer_name(self):
         return self.own_peer_name
+
+    def get_authorized_peers(self):
+        return [peer for peer in self.get_peers_list() if peer.is_authorized]

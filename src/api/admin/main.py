@@ -43,9 +43,14 @@ def generate_next_block(diploma_type: str, pdf_file: Annotated[bytes, File()], a
     return {"message": "Block has been generated!"}
 
 
+@router.post("/admin/add_new_authorized_peer")
+def add_new_authorized_peer(nickname: str, public_key: str, peer_service: PeerService = Depends(get_peer_service)):
+    peer_service.add_new_peer(nickname, True, public_key)
+    return {"message": "Peer has been added!"}
+
 @router.post("/admin/add_new_peer")
-def add_new_peer(nickname: str, is_authorized: bool, public_key: str, peer_service: PeerService = Depends(get_peer_service)):
-    peer_service.add_new_peer(nickname, is_authorized, public_key)
+def add_new_authorized_peer(nickname: str, peer_service: PeerService = Depends(get_peer_service)):
+    peer_service.add_new_peer(nickname, False)
     return {"message": "Peer has been added!"}
 
 

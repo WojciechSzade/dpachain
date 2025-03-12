@@ -1,7 +1,5 @@
 x-backend-base: &backend-base
   build: .
-  volumes:
-    - ./:/src        # Mount the entire project directory
   depends_on:
     - dpachain-db
     - dpachain-db2
@@ -17,8 +15,8 @@ services:
       - .env
     image: mongodb/mongodb-community-server:latest
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=user
-      - MONGO_INITDB_ROOT_PASSWORD=password
+      - MONGODB_INITDB_ROOT_USERNAME=user
+      - MONGODB_INITDB_ROOT_PASSWORD=password
     ports:
       - "27017:27017"
     restart: unless-stopped
@@ -42,8 +40,8 @@ services:
       - .env2
     image: mongodb/mongodb-community-server:latest
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=user
-      - MONGO_INITDB_ROOT_PASSWORD=password
+      - MONGODB_INITDB_ROOT_USERNAME=user
+      - MONGODB_INITDB_ROOT_PASSWORD=password
     ports:
       - "27018:27017"
     command: --port 27017

@@ -14,10 +14,7 @@ class BlockService:
             return str(e)
 
     def get_latest_block(self):
-        try:
-            return self.block_manager.get_latest_block()
-        except Exception as e:
-            return str(e)
+        return self.block_manager.get_latest_block().dict
 
     def get_all_blocks(self):
         try:
@@ -26,10 +23,7 @@ class BlockService:
             return str(e)
 
     def generate_genesis_block(self):
-        try:
-            return self.block_manager.generate_genesis_block()
-        except Exception as e:
-            return str(e)
+        return self.block_manager.generate_genesis_block()
 
     def create_new_block(self, diploma_type, pdf_hash, authors, title, language, discipline, is_defended, date_of_defense, university, faculty, supervisor, reviewer, additional_info=None):
         try:

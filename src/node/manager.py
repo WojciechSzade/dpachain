@@ -3,6 +3,7 @@ import random
 from p2pd import *
 from tenacity import after_log, before_log, before_sleep_log, retry, stop_after_attempt
 
+from src.block.manager import BlockManager
 from src.node.protocols import ProtocolManager
 from src.node.errors import *
 from src.peer.models import PeerStatus
@@ -19,7 +20,9 @@ class NodeManager:
     def __init__(self, peers_manager: PeersManager, nickname, block_manager):
         self.node = None
         self.peers_manager = peers_manager
-        self.protocol_manager = ProtocolManager(self.peers_manager, block_manager)
+        self.block_manager: BlockManager = block_manager
+        self.protocol_manager = ProtocolManager(
+            self.peers_manager, self.block_manager)
         self.nickname = nickname
         self.pipes = []
 
@@ -30,7 +33,8 @@ class NodeManager:
             # await self._set_node_nickname(self.node.node_id)
         except Exception as e:
             logger.error(f"Failed to set node nickname: {e}")
-        self.peers_manager.change_own_peer_name(self.node.addr_bytes.decode())
+            logger.info(f"Setting node adress to ip {self.node.addr_bytes.decode()}")
+            self.peers_manager.change_own_peer_name(self.node.addr_bytes.decode())
         # await self.connect_to_nodes()
 
     async def stop(self):
@@ -75,7 +79,51 @@ class NodeManager:
         best_nodes = self.select_best_node(responses)
         for best_node in best_nodes:
             logger.info(f"Connect to best node {best_node['node'].nickname}")
-            pass
+            pipe = await self.node.connect(best_node['node'].nickname)
+            if pipe is None:
+                logger.info(
+                    f"Failed to connect to {best_node['node'].nickname} with previous state {self.peers_manager.get_peer_state(best_node['node'].nickname)}")
+                self.peers_manager.set_peer_status(
+                    best_node['node'].nickname, PeerStatus.INACTIVE)
+                continue
+            own_chain_size = self.block_manager.get_chain_size()
+            own_last_block_hash = self.block_manager.get_latest_block().hash if own_chain_size > 0 else None
+            res = await self.protocol_manager.request_compare_blockchain(pipe)
+            if res is None:
+                logger.error("Failed to get response from peer")
+                continue
+            chain_size, last_block_hash = res
+            logger.info(
+                f"Own chain size = {own_chain_size}, Own last block hash = {own_last_block_hash}")
+            logger.info(
+                f"Received peer chain size = {chain_size}, Peer last block hash = {last_block_hash}")
+            if own_chain_size == chain_size and own_last_block_hash == last_block_hash:
+                logger.info("Chain is synced!")
+                return "Chain has been synced!"
+            elif own_chain_size > chain_size:
+                return "Chain is already synced!"
+            elif own_chain_size == chain_size and own_last_block_hash != last_block_hash:
+                logger.info(
+                    "Chain size is the same, but last block hash is different")
+                return "Chain size is the same, but last block hash is different"
+            logger.info("Chain size is different - syncing")
+            for i in range(own_chain_size, chain_size):
+                pipe = await self.node.connect(best_node['node'].nickname)
+                if pipe is None:
+                    logger.info(
+                        f"Failed to connect to {best_node['node'].nickname} with previous state {self.peers_manager.get_peer_state(best_node['node'].nickname)}")
+                    self.peers_manager.set_peer_status(
+                        best_node['node'].nickname, PeerStatus.INACTIVE)
+                    continue
+                block = await self.protocol_manager.request_block(pipe, i)
+                logger.info(f"Received block {block}")
+                if block is None:
+                    logger.error("Failed to get block from peer")
+                    continue
+                if not self.block_manager.add_block(block):
+                    logger.error("Failed to add block to blockchain")
+                    continue
+            return "Chain has been synced!"
 
         # connect to it
         # sync node list

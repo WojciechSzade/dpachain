@@ -35,31 +35,32 @@ class BlockManager:
             raise BlockAlreadyExistsError(
                 "genesis block", "Could not generate genesis block, because it already exists"
             )
-        block = Block(
-            "None",  # previous_block
-            0,  # _id
-            "0",  # diploma_type
-            "0",  # pdf_hash
-            "0",  # authors
-            "Genesis block - not a real diploma!",  # title
-            "0",  # language
-            "0",  # discipline
-            0,  # is_defended
-            datetime.min.date(),  # date_of_defense
-            "0",  # university
-            "0",  # faculty
-            "0",  # supervisor
-            "0",  # reviewer
-            self.chain_version,  # chain_version
-            self.sign_hash_with_private_key,  # signing_function
+        block = Block.create_block(
+            None,
+            0,
+            "0",
+            "0",
+            "0",
+            "Genesis block - not a real diploma!",
+            "0",
+            "0",
+            0,
+            datetime.min.date(),
+            "0",
+            "0",
+            "0",
+            "0",
+            self.chain_version,
+            self.sign_hash_with_private_key
         )
+        logger.info(f"Genesis block - {block}")
         self.blocks.insert_one(block.dict)
 
     @require_authorized
     def create_new_block(self, diploma_type: str, pdf_hash: str, authors: (list[str] | str), title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), additional_info: (str | None) = None):
         previous_block = self.get_latest_block()['hash']
         _id = self.get_latest_block()['_id'] + 1
-        block = Block(
+        block = Block.create_block(
             previous_block,
             _id,
             diploma_type,
@@ -85,7 +86,12 @@ class BlockManager:
             raise e
 
     def get_latest_block(self):
-        return self.blocks.find_one(sort=[("_id", -1)])
+        # return Block.from_dict(self.blocks.find_one(sort=[('_id', -1)]))
+        b = self.blocks.find_one(sort=[('_id', -1)])
+        logger.info(f"Latest block: {b}")
+        block = Block.from_dict(b)
+        logger.info(f"Latest block from block {block}")
+        return block
 
     def get_all_blocks(self):
         return list(self.blocks.find())
@@ -100,6 +106,12 @@ class BlockManager:
 
     def drop_all_blocks(self):
         self.blocks.delete_many({})
-        
+
     def get_chain_size(self):
         return self.blocks.count_documents({})
+
+    def get_block_by_index(self, index):
+        return Block.from_dict(self.blocks.find_one({"_id": index}))
+
+    def add_block(self, block):
+        self.blocks.insert_one(block.dict)
