@@ -20,6 +20,7 @@ services:
     ports:
       - "27017:27017"
     restart: unless-stopped
+    attach: false
 
   dpachain-api:
     <<: *backend-base
@@ -46,6 +47,7 @@ services:
       - "27018:27017"
     command: --port 27017
     restart: unless-stopped
+    attach: false
 
   dpachain-api2:
     <<: *backend-base

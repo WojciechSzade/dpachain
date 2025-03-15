@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class ProtocolManager:
     def __init__(self, peers_manager, block_manager):
-        self.peers_manager: PeersManager = peers_manager 
+        self.peers_manager: PeersManager = peers_manager
         self.block_manager: BlockManager = block_manager
 
     @staticmethod
@@ -38,7 +38,8 @@ class ProtocolManager:
         if not protocol or not author:
             logger.error(f"Invalid message structure: {msg}")
             return
-        logger.info(f"After parsing: protocol: {protocol}, author: {author}, payload: {payload}")
+        logger.info(
+            f"After parsing: protocol: {protocol}, author: {author}, payload: {payload}")
         return protocol, author, payload
 
     def get_author_peer(self, author, protocol):
@@ -68,7 +69,8 @@ class ProtocolManager:
                     f"Received ask_chain_size from {author}, handling.")
                 return await self.handle_ask_chain_size(pipe)
             case 'response_chain_size':
-                logger.info(f"Received response_chain_size from {author}, {payload} - this should be currently handled in the request.")
+                logger.info(
+                    f"Received response_chain_size from {author}, {payload} - this should be currently handled in the request.")
                 return
             case 'ask_compare_blockchain':
                 logger.info(
@@ -82,12 +84,12 @@ class ProtocolManager:
                 logger.info(
                     f"Received ask_block from {author}, handling.")
                 return await self.handle_ask_block(pipe, payload
-                )
+                                                   )
             case 'response_block':
                 logger.info(
                     f"Received response_block from {author}, {payload} - this should be currently handled in the request.")
                 return
-            
+
             case _:
                 logger.error(f"Unknown protocol {protocol} from {author}")
                 return
@@ -101,7 +103,10 @@ class ProtocolManager:
     @staticmethod
     async def send_message(pipe, msg, wait_response=False):
         """Send message to peer"""
+        logger.info(f"SEND_MESSAGE Sending message {msg}")
         msg = json.dumps(msg).encode('utf-8')
+        logger.info(
+            f"SEND_MESSAGE Sending message {msg} (after json and encode)")
         msg = b"DPACHAIN" + msg
         logger.info(f"Sending message to {pipe}")
         logger.info(f"Message:\n {msg}")
@@ -154,7 +159,7 @@ class ProtocolManager:
         await self.send_message(pipe, msg)
         await pipe.close()
         return
-    
+
     async def request_compare_blockchain(self, pipe):
         """Request to compare blockchain with peer"""
         msg = {
@@ -177,15 +182,17 @@ class ProtocolManager:
         chain_size = response.get("payload").get("chain_size")
         last_block_hash = response.get("payload").get("last_block_hash")
         if chain_size is None or last_block_hash is None:
-            logger.error("Failed to get chain size or last block hash from peer")
+            logger.error(
+                "Failed to get chain size or last block hash from peer")
             return
         return chain_size, last_block_hash
-    
+
     async def handle_compare_blockchain(self, pipe):
         """Handle compare blockchain request"""
         own_chain_size = self.block_manager.get_chain_size()
         logger.info(f"Own chain size to respond is {own_chain_size}")
-        own_last_block_hash = self.block_manager.get_latest_block().hash if own_chain_size > 0 else None
+        own_last_block_hash = self.block_manager.get_latest_block(
+        ).hash if own_chain_size > 0 else None
         logger.info(f"Own last block hash to respond is {own_last_block_hash}")
         msg = {
             "protocol": "response_compare_blockchain",
@@ -197,7 +204,7 @@ class ProtocolManager:
         await self.send_message(pipe, msg)
         await pipe.close()
         return
-            
+
     async def request_block(self, pipe, block_index):
         """Request block with index from peer"""
         msg = {
@@ -208,6 +215,7 @@ class ProtocolManager:
         logger.info(f"Requesting block with index {block_index} from {pipe}")
         logger.info(f"Message:\n {msg}")
         res = await self.send_message(pipe, msg, wait_response=True)
+        logger.info("Something responded or timed-out")
         if res is None:
             logger.error("Failed to get response from peer")
             return
@@ -220,25 +228,23 @@ class ProtocolManager:
         block = response.get("payload").get("block")
         block = Block.from_dict(block)
         return block
-    
+
     async def handle_ask_block(self, pipe, payload):
         """Handle ask block request"""
         block_index = payload.get("block_index")
         if block_index is None:
             logger.error("Failed to get block index from peer")
             return
-        block: Block = self.block_manager.get_block_by_index(block_index)
-        logger.info(f"Block to send is {block}")
-        logger.info(f"Block dict: {block.dict}")
+        block = self.block_manager.get_block_by_index(block_index)
+        logger.info(f"Block to send is {block.dict}")
         msg = {
             "protocol": "response_block",
             "author": self.peers_manager.own_peer_name,
-            "payload": {
-                "block": block.dict}
+            "payload": {"block": block.dict}
         }
         logger.info(f"Sending block with index {block_index} to {pipe}")
         logger.info(f"Message:\n {msg}")
         await self.send_message(pipe, msg)
+        logger.info(f"Message sent - closing.")
         await pipe.close()
         return
-        

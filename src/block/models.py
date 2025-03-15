@@ -17,7 +17,7 @@ class Block:
         self.diploma_type = diploma_type
         self.pdf_hash = pdf_hash
         self.author = author
-        self.date_of_defense = date_of_defense
+        self.date_of_defense: datetime.date = date_of_defense
         self.title = title
         self.language = language
         self.discipline = discipline
@@ -30,52 +30,15 @@ class Block:
         self.chain_version = chain_version
         self.hash = hash
         self.signed_hash = signed_hash
-        
 
     @classmethod
     def create_block(cls, previous_block: str, _id: int, diploma_type: str, pdf_hash: str, authors: (list[str] | str), title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), chain_version: str, signing_function: callable, additional_info: (str | None) = None):
-        logger.info(f"Creating block {title}")
-        block = {}
-        block['previous_block'] = previous_block
-        block['_id'] = _id
-        block['timestamp'] = datetime.now().timestamp()
-        block['diploma_type'] = diploma_type
-        block['pdf_hash'] = pdf_hash
-        block['author'] = authors
-        block['date_of_defense'] = datetime.combine(
+        timestamp = datetime.now().timestamp()
+        date_of_defense = datetime.combine(
             date_of_defense, datetime.min.time())
-        block['title'] = title
-        block['language'] = language
-        block['discipline'] = discipline
-        block['is_defended'] = is_defended
-        block['university'] = university
-        block['faculty'] = faculty
-        block['supervisor'] = supervisor
-        block['reviewer'] = reviewer
-        block['additional_info'] = additional_info
-        block['chain_version'] = chain_version
-        block['hash'] = cls.calculate_merkle_root([
-            block['previous_block'],
-            block['_id'],
-            block['timestamp'],
-            block['diploma_type'],
-            block['pdf_hash'],
-            block['author'],
-            block['date_of_defense'],
-            block['title'],
-            block['language'],
-            block['discipline'],
-            block['is_defended'],
-            block['university'],
-            block['faculty'],
-            block['supervisor'],
-            block['reviewer'],
-            block['additional_info'],
-            block['chain_version']
-        ])
-        block['signed_hash'] = signing_function(block['hash'])
-        return cls.from_dict(block)
-        
+        hash = cls.calculate_merkle_root([previous_block, _id, timestamp, diploma_type, pdf_hash, authors, date_of_defense,
+                                         title, language, discipline, is_defended, university, faculty, supervisor, reviewer, additional_info, chain_version])
+        return cls(previous_block, _id, timestamp, diploma_type, pdf_hash, authors, date_of_defense, title, language, discipline, is_defended, university, faculty, supervisor, reviewer, additional_info, chain_version, hash, signing_function(hash))
 
     @staticmethod
     def calculate_merkle_root(data):
@@ -111,7 +74,7 @@ class Block:
             "diploma_type": self.diploma_type,
             "pdf_hash": self.pdf_hash,
             "author": self.author,
-            "date_of_defense": self.date_of_defense,
+            "date_of_defense": self.date_of_defense.isoformat(),
             "title": self.title,
             "language": self.language,
             "discipline": self.discipline,
@@ -136,7 +99,7 @@ class Block:
             data['diploma_type'],
             data['pdf_hash'],
             data['author'],
-            data['date_of_defense'],
+            datetime.fromisoformat(data['date_of_defense']),
             data['title'],
             data['language'],
             data['discipline'],
