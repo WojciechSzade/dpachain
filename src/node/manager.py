@@ -17,24 +17,32 @@ max_tries = 20  # 2 minutes
 
 
 class NodeManager:
-    def __init__(self, peers_manager: PeersManager, nickname, block_manager):
+    def __init__(self, nickname):
         self.node = None
-        self.peers_manager = peers_manager
-        self.block_manager: BlockManager = block_manager
-        self.protocol_manager = ProtocolManager(
-            self.peers_manager, self.block_manager)
+        self.peers_manager = None
+        self.block_manager = None
+        self.protocol_manager = ProtocolManager()
         self.nickname = nickname
         self.pipes = []
+
+    def set_block_manager(self, block_manager: BlockManager):
+        self.block_manager = block_manager
+        self.protocol_manager.set_block_manager(block_manager)
+
+    def set_peers_manager(self, peers_manager: PeersManager):
+        self.peers_manager = peers_manager
+        self.protocol_manager.set_peers_manager(peers_manager)
 
     async def start(self, port):
         self.node: P2PNode = await self.__create_node(port)
         try:
             await self._set_node_nickname(self.nickname)
-            # await self._set_node_nickname(self.node.node_id)
         except Exception as e:
             logger.error(f"Failed to set node nickname: {e}")
-            logger.info(f"Setting node adress to ip {self.node.addr_bytes.decode()}")
-            self.peers_manager.change_own_peer_name(self.node.addr_bytes.decode())
+            logger.info(
+                f"Setting node adress to ip {self.node.addr_bytes.decode()}")
+            self.peers_manager.change_own_peer_name(
+                self.node.addr_bytes.decode())
         # await self.connect_to_nodes()
 
     async def stop(self):
@@ -87,7 +95,8 @@ class NodeManager:
                     best_node['node'].nickname, PeerStatus.INACTIVE)
                 continue
             own_chain_size = self.block_manager.get_chain_size()
-            own_last_block_hash = self.block_manager.get_latest_block().hash if own_chain_size > 0 else None
+            own_last_block_hash = self.block_manager.get_latest_block(
+            ).hash if own_chain_size > 0 else None
             res = await self.protocol_manager.request_compare_blockchain(pipe)
             if res is None:
                 logger.error("Failed to get response from peer")

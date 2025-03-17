@@ -10,13 +10,13 @@ logger = logging.getLogger(__name__)
 
 
 class Block:
-    def __init__(self, previous_block, _id, timestamp, diploma_type, pdf_hash, author, date_of_defense, title, language, discipline, is_defended, university, faculty, supervisor, reviewer, additional_info, chain_version, hash, signed_hash):
+    def __init__(self, previous_block, _id, timestamp, diploma_type, pdf_hash, authors, date_of_defense, title, language, discipline, is_defended, university, faculty, supervisor, reviewer, additional_info, peer_author, chain_version, hash, signed_hash):
         self.previous_block = previous_block
         self._id = _id
         self.timestamp = timestamp
         self.diploma_type = diploma_type
         self.pdf_hash = pdf_hash
-        self.author = author
+        self.authors = authors
         self.date_of_defense: datetime.date = date_of_defense
         self.title = title
         self.language = language
@@ -27,18 +27,20 @@ class Block:
         self.supervisor = supervisor
         self.reviewer = reviewer
         self.additional_info = additional_info
+        self.peer_author = peer_author
         self.chain_version = chain_version
         self.hash = hash
         self.signed_hash = signed_hash
 
     @classmethod
-    def create_block(cls, previous_block: str, _id: int, diploma_type: str, pdf_hash: str, authors: (list[str] | str), title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), chain_version: str, signing_function: callable, additional_info: (str | None) = None):
+    def create_block(cls, previous_block: str, _id: int, diploma_type: str, pdf_hash: str, authors: (list[str] | str), title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), peer_author: str, chain_version: str, signing_function: callable, additional_info: (str | None) = None):
         timestamp = datetime.now().timestamp()
         date_of_defense = datetime.combine(
             date_of_defense, datetime.min.time())
+
         hash = cls.calculate_merkle_root([previous_block, _id, timestamp, diploma_type, pdf_hash, authors, date_of_defense,
-                                         title, language, discipline, is_defended, university, faculty, supervisor, reviewer, additional_info, chain_version])
-        return cls(previous_block, _id, timestamp, diploma_type, pdf_hash, authors, date_of_defense, title, language, discipline, is_defended, university, faculty, supervisor, reviewer, additional_info, chain_version, hash, signing_function(hash))
+                                         title, language, discipline, is_defended, university, faculty, supervisor, reviewer, additional_info, peer_author, chain_version])
+        return cls(previous_block, _id, timestamp, diploma_type, pdf_hash, authors, date_of_defense, title, language, discipline, is_defended, university, faculty, supervisor, reviewer, additional_info, peer_author, chain_version, hash, signing_function(hash))
 
     @staticmethod
     def calculate_merkle_root(data):
@@ -73,7 +75,7 @@ class Block:
             "timestamp": self.timestamp,
             "diploma_type": self.diploma_type,
             "pdf_hash": self.pdf_hash,
-            "author": self.author,
+            "authors": self.authors,
             "date_of_defense": self.date_of_defense.isoformat(),
             "title": self.title,
             "language": self.language,
@@ -84,6 +86,7 @@ class Block:
             "supervisor": self.supervisor,
             "reviewer": self.reviewer,
             "additional_info": self.additional_info,
+            "peer_author": self.peer_author,
             "chain_version": self.chain_version,
             "hash": self.hash,
             "signed_hash": self.signed_hash
@@ -98,7 +101,7 @@ class Block:
             data['timestamp'],
             data['diploma_type'],
             data['pdf_hash'],
-            data['author'],
+            data['authors'],
             datetime.fromisoformat(data['date_of_defense']),
             data['title'],
             data['language'],
@@ -109,6 +112,7 @@ class Block:
             data['supervisor'],
             data['reviewer'],
             data['additional_info'],
+            data['peer_author'],
             data['chain_version'],
             data['hash'],
             data['signed_hash'],

@@ -17,19 +17,13 @@ class BlockService:
         return self.block_manager.get_latest_block().dict
 
     def get_all_blocks(self):
-        try:
-            return self.block_manager.get_all_blocks()
-        except Exception as e:
-            return str(e)
+        return self.block_manager.get_all_blocks()
 
     def generate_genesis_block(self):
         return self.block_manager.generate_genesis_block()
 
     def create_new_block(self, diploma_type, pdf_hash, authors, title, language, discipline, is_defended, date_of_defense, university, faculty, supervisor, reviewer, additional_info=None):
-        try:
-            return self.block_manager.create_new_block(diploma_type, pdf_hash, authors, title, language, discipline, is_defended, date_of_defense, university, faculty, supervisor, reviewer, additional_info)
-        except Exception as e:
-            return str(e)
+        return self.block_manager.create_new_block(diploma_type, pdf_hash, authors, title, language, discipline, is_defended, date_of_defense, university, faculty, supervisor, reviewer, additional_info)
 
     def calculate_pdf_hash(self, pdf_file):
         try:

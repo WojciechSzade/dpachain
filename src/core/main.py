@@ -17,7 +17,11 @@ class BlockchainManager:
             self.db, network_id, chain_version, authorized, private_key)
         self.peer_manager = PeersManager(
             self.client_db, authorized, own_public_key)
-        self.node_manager = NodeManager(self.peer_manager, own_node_name, self.block_manager)
+        self.node_manager = NodeManager(own_node_name)
+        
+        self.block_manager.set_peer_manager(self.peer_manager)
+        self.node_manager.set_block_manager(self.block_manager)
+        self.node_manager.set_peers_manager(self.peer_manager)
 
     async def start_node_service(self, p2p_port):
         await self.node_manager.start(p2p_port)

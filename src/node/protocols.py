@@ -11,9 +11,15 @@ logger = logging.getLogger(__name__)
 
 
 class ProtocolManager:
-    def __init__(self, peers_manager, block_manager):
-        self.peers_manager: PeersManager = peers_manager
-        self.block_manager: BlockManager = block_manager
+    def __init__(self):
+        self.block_manager = None
+        self.peers_manager = None
+
+    def set_block_manager(self, block_manager: BlockManager):
+        self.block_manager = block_manager
+
+    def set_peers_manager(self, peers_manager: PeersManager):
+        self.peers_manager = peers_manager
 
     @staticmethod
     def parse_message(msg):
