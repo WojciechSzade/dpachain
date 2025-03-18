@@ -44,13 +44,14 @@ def generate_next_block(diploma_type: str, pdf_file: Annotated[bytes, File()], a
 
 
 @router.post("/admin/add_new_authorized_peer")
-def add_new_authorized_peer(nickname: str, public_key: str, peer_service: PeerService = Depends(get_peer_service)):
-    peer_service.add_new_peer(nickname, True, public_key)
+def add_new_authorized_peer(nickname: str, public_key: str, adress: str = None, peer_service: PeerService = Depends(get_peer_service)):
+    peer_service.add_new_peer(nickname, adress, True, public_key)
     return {"message": "Peer has been added!"}
 
+
 @router.post("/admin/add_new_peer")
-def add_new_authorized_peer(nickname: str, peer_service: PeerService = Depends(get_peer_service)):
-    peer_service.add_new_peer(nickname, False)
+def add_new_authorized_peer(nickname: str, adress: str = None, peer_service: PeerService = Depends(get_peer_service)):
+    peer_service.add_new_peer(nickname, adress, False)
     return {"message": "Peer has been added!"}
 
 
@@ -89,6 +90,7 @@ async def sync_chain(node_service: NodeService = Depends(get_node_service)):
         # return {"message": f"Failed to sync chain: {e}"}
         raise e
 
+
 @router.post("/admin/change_node_nickname")
 async def change_node_nickname(nickname: str, node_service: NodeService = Depends(get_node_service)):
     try:
@@ -96,3 +98,12 @@ async def change_node_nickname(nickname: str, node_service: NodeService = Depend
         return {"message": "Node nickname has been changed!"}
     except Exception as e:
         return {"message": f"Failed to change node nickname: {e}"}
+
+
+@router.post("/admin/present_to_peer")
+async def present_to_peer(nickname: str, node_service: NodeService = Depends(get_node_service)):
+    try:
+        await node_service.present_to_peer(nickname)
+        return {"message": "Node has been presented to peer!"}
+    except Exception as e:
+        return {"message": f"Failed to present node to peer: {e}"}

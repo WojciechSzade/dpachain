@@ -6,6 +6,7 @@ from tenacity import after_log, before_log, before_sleep_log, retry, stop_after_
 from src.block.manager import BlockManager
 from src.node.protocols import ProtocolManager
 from src.node.errors import *
+from src.peer.errors import PeerNotFoundError
 from src.peer.models import PeerStatus
 from src.peer.manager import PeersManager
 
@@ -41,7 +42,7 @@ class NodeManager:
             logger.error(f"Failed to set node nickname: {e}")
             logger.info(
                 f"Setting node adress to ip {self.node.addr_bytes.decode()}")
-            self.peers_manager.change_own_peer_name(
+            self.peers_manager.change_own_peer_nickname(
                 self.node.addr_bytes.decode())
         # await self.connect_to_nodes()
 
@@ -50,9 +51,10 @@ class NodeManager:
 
     async def _set_node_nickname(self, nickname):
         try:
-            node_name = await self.node.nickname(nickname)
-            self.peers_manager.change_own_peer_name(node_name)
-            logger.info(f"Node name set to: {node_name}")
+            node_nickname = await self.node.nickname(nickname)
+            self.peers_manager.change_own_peer_nickname(
+                node_nickname, self.node.addr_bytes.decode())
+            logger.info(f"Node nickname set to: {node_nickname}")
         except Exception as e:
             logger.error(f"Failed to set node name to {nickname}")
             raise e
@@ -193,3 +195,13 @@ class NodeManager:
         except Exception as e:
             logger.error(f"Failed to change node nickname: {e}")
             raise e
+
+    async def present_to_peer(self, nickname):
+        peer = self.peers_manager.get_peer_by_nickname(nickname)
+        if peer is None:
+            raise PeerNotFoundError(nickname)
+        pipe = await self.node.connect(nickname)
+        if pipe is None:
+            raise PeerNotFoundError(nickname)
+        await self.protocol_manager.present_self(pipe)
+        return "Presented to peer!"

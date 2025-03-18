@@ -16,3 +16,6 @@ class NodeService:
         
     async def change_node_nickname(self, nickname):
         return await self.node_manager.change_node_nickname(nickname)
+    
+    async def present_to_peer(self, nickname):
+        return await self.node_manager.present_to_peer(nickname)

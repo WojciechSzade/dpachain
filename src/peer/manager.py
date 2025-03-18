@@ -13,7 +13,7 @@ class PeersManager:
     def __init__(self, client_db, authorized, public_key):
         self.db = client_db.blockchain
         self.peers = self.db.peers
-        self.own_peer_name = None
+        self.own_peer = None
         self.authorized = authorized
         self.public_key = public_key
 
@@ -25,6 +25,12 @@ class PeersManager:
         peer = self.peers.find_one({"nickname": nickname})
         if peer is None:
             raise PeerNotFoundError(nickname)
+        return Peer.from_dict(peer)
+
+    def _get_peer_by_nickname(self, nickname):
+        peer = self.peers.find_one({"nickname": nickname})
+        if peer is None:
+            return None
         return Peer.from_dict(peer)
 
     def get_valid_peers_names(self):
@@ -42,8 +48,8 @@ class PeersManager:
         self.peers.update_one({"nickname": nickname}, {
                               "$set": {"status": status.value}})
 
-    def get_peer_state(self, name):
-        return PeerStatus(self.get_peer_by_nickname(name).status)
+    def get_peer_state(self, nickname):
+        return PeerStatus(self.get_peer_by_nickname(nickname).status)
 
     def get_peers_by_state(self, state):
         return [peer for peer in self.get_peers_list() if peer.status == state]
@@ -52,17 +58,18 @@ class PeersManager:
         peers = self.get_peers_list()
         return [peer.nickname for peer in peers if peer.status == PeerStatus.ACTIVE or peer.status == PeerStatus.OWN]
 
-    def add_new_peer(self, nickname, is_authorized=False, public_key=None, status=PeerStatus.UNKNOWN):
-        new_peer = Peer(nickname, status, is_authorized, public_key)
-        result = self.peers.update_one(
+    def add_new_peer(self, nickname, adress=None, is_authorized=False, public_key=None, status=PeerStatus.UNKNOWN):
+        new_peer = Peer(nickname, adress, status, is_authorized, public_key)
+        if self._get_peer_by_nickname(nickname) is not None:
+            raise PeerAlreadyExistsError(nickname)
+        self.peers.update_one(
             {"nickname": nickname},
             {"$set": new_peer.dict},
             upsert=True)
-        if result.matched_count > 0:
-            raise PeerAlreadyExistsError(nickname)
+        return new_peer
 
     def remove_peer(self, nickname):
-        peer = self.get_peer_by_nickname(nickname)
+        peer = self._get_peer_by_nickname(nickname)
         if peer.status == PeerStatus.OWN:
             raise PeerRemovalError(nickname, "Cannot remove own peer")
         elif peer.status == PeerStatus.BANNED:
@@ -85,26 +92,27 @@ class PeersManager:
             return
         self.set_peer_status(nickname, PeerStatus.UNKNOWN)
 
-    def _set_own_peer(self, nickname):
-        if self.own_peer_name is not None:
-            raise OwnPeerAlreadyExistsError(self.own_peer_name)
+    def _set_own_peer(self, nickname, adress=None):
+        if self.own_peer is not None:
+            raise OwnPeerAlreadyExistsError(self.own_peer)
         if len(self.get_peers_by_state(PeerStatus.OWN)) > 0:
             raise OwnPeerAlreadyExistsError(
                 self.get_peers_by_state(PeerStatus.OWN)[0].nickname)
-        self.own_peer_name = nickname
-        self.add_new_peer(nickname, self.authorized,
-                          self.public_key, PeerStatus.OWN)
+        self.own_peer = self.add_new_peer(
+            nickname, adress, self.authorized, self.public_key, PeerStatus.OWN)
 
-    def change_own_peer_name(self, nickname):
-        if self.own_peer_name is None:
-            return self._set_own_peer(nickname)
-        self.set_peer_status(self.own_peer_name, PeerStatus.UNKNOWN)
-        self.add_new_peer(nickname, self.authorized,
-                          self.public_key, PeerStatus.OWN)
-        self.own_peer_name = nickname
+    def change_own_peer_nickname(self, nickname, adress=None):
+        if self.own_peer is None:
+            return self._set_own_peer(nickname, adress)
+        self.set_peer_status(self.own_peer, PeerStatus.UNKNOWN)
+        self.own_peer = self.add_new_peer(nickname, adress, self.authorized,
+                                          self.public_key, PeerStatus.OWN)
 
     def get_own_peer_name(self):
-        return self.own_peer_name
+        return self.own_peer.nickname
+
+    def get_own_peer_adress(self):
+        return self.own_peer.adress
 
     def get_authorized_peers(self):
         return [peer for peer in self.get_peers_list() if peer.is_authorized]

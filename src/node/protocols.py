@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 class ProtocolManager:
     def __init__(self):
-        self.block_manager = None
-        self.peers_manager = None
+        self.block_manager: BlockManager = None
+        self.peers_manager: PeersManager = None
 
     def set_block_manager(self, block_manager: BlockManager):
         self.block_manager = block_manager
@@ -49,14 +49,15 @@ class ProtocolManager:
         return protocol, author, payload
 
     def get_author_peer(self, author, protocol):
-        author_peer = self.peers_manager.get_peer_by_name(author)
-        if author_peer is None and protocol != 'new_peer':
-            self.handle_unknown_author()
-            return
-        elif not author_peer.is_valid():
-            logger.error(
-                f"Author {author_peer.nickname} is not valid (probably banned)")
-            return
+        author_peer = self.peers_manager._get_peer_by_name(author)
+        # if author_peer is None and protocol != 'new_peer':
+        #     logger.error(f"Unknown author {author}")
+        #     self.handle_unknown_author()
+        #     return
+        # elif not author_peer.is_valid():
+        #     logger.error(
+        #         f"Author {author_peer.nickname} is not valid (probably banned)")
+        #     return
         return author_peer
 
     async def add_peer_protocole_support(self, msg, client_tup, pipe):
@@ -66,9 +67,6 @@ class ProtocolManager:
             return
         protocol, author, payload = parse
         # author_peer = self.get_author_peer(author)
-        # if author_peer is None:
-        #     self.handle_unknown_author()
-        #     return
         match protocol:
             case 'ask_chain_size':
                 logger.info(
@@ -95,6 +93,14 @@ class ProtocolManager:
                 logger.info(
                     f"Received response_block from {author}, {payload} - this should be currently handled in the request.")
                 return
+            case 'new_peer':
+                logger.info(
+                    f"Received new_peer from {author}, handling.")
+                return await self.handle_new_peer(pipe, payload)
+            case 'present_self':
+                logger.info(
+                    f"Received present_self from {author}, handling.")
+                return await self.present_self(pipe)
 
             case _:
                 logger.error(f"Unknown protocol {protocol} from {author}")
@@ -128,7 +134,7 @@ class ProtocolManager:
         """Send request to get chain size from peer"""
         msg = {
             "protocol": "ask_chain_size",
-            "author": self.peers_manager.own_peer_name,
+            "author": self.peers_manager.get_own_peer_name(),
             "payload": None
         }
         logger.info(f"Requesting chain size from {pipe}")
@@ -157,7 +163,7 @@ class ProtocolManager:
         chain_size = self.block_manager.get_chain_size()
         msg = {
             "protocol": "response_chain_size",
-            "author": self.peers_manager.own_peer_name,
+            "author": self.peers_manager.get_own_peer_name(),
             "payload": chain_size
         }
         logger.info(f"Sending chain size to {pipe}")
@@ -170,7 +176,7 @@ class ProtocolManager:
         """Request to compare blockchain with peer"""
         msg = {
             "protocol": "ask_compare_blockchain",
-            "author": self.peers_manager.own_peer_name,
+            "author": self.peers_manager.get_own_peer_name(),
             "payload": None
         }
         logger.info(f"Requesting to compare blockchain with {pipe}")
@@ -202,7 +208,7 @@ class ProtocolManager:
         logger.info(f"Own last block hash to respond is {own_last_block_hash}")
         msg = {
             "protocol": "response_compare_blockchain",
-            "author": self.peers_manager.own_peer_name,
+            "author": self.peers_manager.get_own_peer_name(),
             "payload": {"chain_size": own_chain_size, "last_block_hash": own_last_block_hash}
         }
         logger.info(f"Sending compare blockchain response to {pipe}")
@@ -215,7 +221,7 @@ class ProtocolManager:
         """Request block with index from peer"""
         msg = {
             "protocol": "ask_block",
-            "author": self.peers_manager.own_peer_name,
+            "author": self.peers_manager.get_own_peer_name(),
             "payload": {"block_index": block_index}
         }
         logger.info(f"Requesting block with index {block_index} from {pipe}")
@@ -245,12 +251,41 @@ class ProtocolManager:
         logger.info(f"Block to send is {block.dict}")
         msg = {
             "protocol": "response_block",
-            "author": self.peers_manager.own_peer_name,
+            "author": self.peers_manager.get_own_peer_name(),
             "payload": {"block": block.dict}
         }
         logger.info(f"Sending block with index {block_index} to {pipe}")
         logger.info(f"Message:\n {msg}")
         await self.send_message(pipe, msg)
         logger.info(f"Message sent - closing.")
+        await pipe.close()
+        return
+
+    async def present_self(self, pipe):
+        """Present self to peer"""
+        msg = {
+            "protocol": "new_peer",
+            "author": self.peers_manager.get_own_peer_name(),
+            "payload": {
+                "nickname": self.peers_manager.get_own_peer_name(),
+                "adress": self.peers_manager.get_own_peer_adress(),
+            }
+        }
+        logger.info(f"Presenting self to {pipe}")
+        logger.info(f"Message:\n {msg}")
+        await self.send_message(pipe, msg)
+        await pipe.close()
+        return
+
+    async def handle_new_peer(self, pipe, payload):
+        """Handle new peer request"""
+        new_peer_nickname = payload.get("nickname")
+        new_peer_adress = payload.get("adress")
+        logger.info(f"Received new peer {new_peer_nickname} from {pipe}")
+        if new_peer_nickname is None:
+            logger.error("Failed to get new peer nickname")
+            return
+        self.peers_manager.add_new_peer(
+            new_peer_nickname, new_peer_adress)
         await pipe.close()
         return

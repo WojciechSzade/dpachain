@@ -13,8 +13,10 @@ class PeerStatus(Enum):
 
 
 class Peer:
-    def __init__(self, nickname: str, status: PeerStatus = PeerStatus.UNKNOWN, is_authorized: bool = False, public_key: str = None, is_banned: bool = False,):
+    def __init__(self, nickname: str, adress: str | None = None, status: PeerStatus = PeerStatus.UNKNOWN, is_authorized: bool = False, public_key: str = None, is_banned: bool = False,):
         self.nickname = nickname
+        self.adress = adress if adress else nickname if not nickname.endswith(
+            ".peer") else None
         self.status = status
         self.is_authorized = is_authorized
         self.public_key = public_key
@@ -23,6 +25,7 @@ class Peer:
     def dict(self):
         return {
             "nickname": self.nickname,
+            "adress": self.adress,
             "status": self.status.value,
             "is_authorized": self.is_authorized,
             "public_key": self.public_key
@@ -32,6 +35,7 @@ class Peer:
     def from_dict(cls, data: dict):
         return cls(
             data["nickname"],
+            data["adress"],
             PeerStatus(data["status"]),
             data["is_authorized"],
             data["public_key"]
