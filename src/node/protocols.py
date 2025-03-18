@@ -11,9 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 class ProtocolManager:
-    def __init__(self):
+    def __init__(self, node_manager):
         self.block_manager: BlockManager = None
         self.peers_manager: PeersManager = None
+        self.node_manager = node_manager
 
     def set_block_manager(self, block_manager: BlockManager):
         self.block_manager = block_manager
@@ -49,16 +50,21 @@ class ProtocolManager:
         return protocol, author, payload
 
     def get_author_peer(self, author, protocol):
-        author_peer = self.peers_manager._get_peer_by_name(author)
-        # if author_peer is None and protocol != 'new_peer':
-        #     logger.error(f"Unknown author {author}")
-        #     self.handle_unknown_author()
-        #     return
-        # elif not author_peer.is_valid():
-        #     logger.error(
-        #         f"Author {author_peer.nickname} is not valid (probably banned)")
-        #     return
-        return author_peer
+        logger.info(f"Getting author peer {author}")
+        try:
+            author_peer = self.peers_manager._get_peer_by_nickname(author)
+            if protocol != 'new_peer' and author_peer is None:
+                logger.error(f"Unknown author {author}")
+                self.handle_unknown_author()
+                return
+            elif protocol != 'new_peer' and not author_peer.is_valid():
+                logger.error(
+                    f"Author {author_peer.nickname} is not valid (probably banned)")
+                return
+            return author_peer
+        except Exception as e:
+            logger.error(f"Failed to get author peer: {e}")
+            return
 
     async def add_peer_protocole_support(self, msg, client_tup, pipe):
         parse = self.parse_message(msg)
@@ -66,7 +72,7 @@ class ProtocolManager:
             logger.error("Failed to parse message")
             return
         protocol, author, payload = parse
-        # author_peer = self.get_author_peer(author)
+        author_peer = self.get_author_peer(author, protocol)
         match protocol:
             case 'ask_chain_size':
                 logger.info(
@@ -101,6 +107,10 @@ class ProtocolManager:
                 logger.info(
                     f"Received present_self from {author}, handling.")
                 return await self.present_self(pipe)
+            case 'ask_sync_chain':
+                logger.info(
+                    f"Received ask_sync_chain from {author}, handling.")
+                return await self.handle_ask_sync(pipe)
 
             case _:
                 logger.error(f"Unknown protocol {protocol} from {author}")
@@ -288,4 +298,21 @@ class ProtocolManager:
         self.peers_manager.add_new_peer(
             new_peer_nickname, new_peer_adress)
         await pipe.close()
+        return
+
+    async def ask_to_sync(self, pipe):
+        """Ask peer to sync chain"""
+        msg = {
+            "protocol": "ask_sync_chain",
+            "author": self.peers_manager.get_own_peer_name(),
+            "payload": None
+        }
+        logger.info(f"Asking {pipe} to sync chain")
+        await self.send_message(pipe, msg)
+        return
+
+    async def handle_ask_sync(self, pipe):
+        """Handle ask to sync chain"""
+        logger.info(f"Received ask to sync chain from {pipe}")
+        await self.node_manager.sync_chain()
         return

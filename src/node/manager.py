@@ -22,7 +22,7 @@ class NodeManager:
         self.node = None
         self.peers_manager = None
         self.block_manager = None
-        self.protocol_manager = ProtocolManager()
+        self.protocol_manager = ProtocolManager(self)
         self.nickname = nickname
         self.pipes = []
 
@@ -198,10 +198,16 @@ class NodeManager:
 
     async def present_to_peer(self, nickname):
         peer = self.peers_manager.get_peer_by_nickname(nickname)
-        if peer is None:
-            raise PeerNotFoundError(nickname)
         pipe = await self.node.connect(nickname)
         if pipe is None:
             raise PeerNotFoundError(nickname)
         await self.protocol_manager.present_self(pipe)
-        return "Presented to peer!"
+        return
+
+    async def ask_peer_to_sync(self, nickname):
+        peer = self.peers_manager.get_peer_by_nickname(nickname)
+        pipe = await self.node.connect(nickname)
+        if pipe is None:
+            raise PeerNotFoundError(nickname)
+        await self.protocol_manager.ask_to_sync(pipe)
+        return

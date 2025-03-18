@@ -107,3 +107,12 @@ async def present_to_peer(nickname: str, node_service: NodeService = Depends(get
         return {"message": "Node has been presented to peer!"}
     except Exception as e:
         return {"message": f"Failed to present node to peer: {e}"}
+
+
+@router.post("/admin/ask_peer_to_sync")
+async def ask_peer_to_sync(nickname: str, node_service: NodeService = Depends(get_node_service)):
+    try:
+        await node_service.ask_peer_to_sync(nickname)
+        return {"message": "Node has been asked to sync!"}
+    except Exception as e:
+        return {"message": f"Failed to ask peer to sync: {e}"}

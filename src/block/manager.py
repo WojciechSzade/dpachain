@@ -25,6 +25,7 @@ class BlockManager:
         self.transactions = []
         self.authorized = authorized
         self.peer_manager = None
+        self.node_manager = None
         if self.authorized:
             if signing_private_key is None:
                 raise ValueError(
@@ -33,6 +34,9 @@ class BlockManager:
 
     def set_peer_manager(self, peer_manager: PeersManager):
         self.peer_manager = peer_manager
+        
+    def set_node_manager(self, node_manager):
+        self.node_manager = node_manager
 
     @require_authorized
     def generate_genesis_block(self):
@@ -96,6 +100,7 @@ class BlockManager:
         except Exception as e:
             logger.error(f"Failed to insert block: {e}")
             raise e
+        
 
     def get_latest_block(self):
         return Block.from_dict(self.blocks.find_one(sort=[('_id', -1)])) if self.blocks.count_documents({}) > 0 else None

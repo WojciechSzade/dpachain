@@ -18,8 +18,9 @@ class BlockchainManager:
         self.peer_manager = PeersManager(
             self.client_db, authorized, own_public_key)
         self.node_manager = NodeManager(own_node_name)
-        
+
         self.block_manager.set_peer_manager(self.peer_manager)
+        self.block_manager.set_node_manager(self.node_manager)
         self.node_manager.set_block_manager(self.block_manager)
         self.node_manager.set_peers_manager(self.peer_manager)
 

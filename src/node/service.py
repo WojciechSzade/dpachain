@@ -19,3 +19,6 @@ class NodeService:
     
     async def present_to_peer(self, nickname):
         return await self.node_manager.present_to_peer(nickname)
+    
+    async def ask_peer_to_sync(self, nickname):
+        return await self.node_manager.ask_peer_to_sync(nickname)
