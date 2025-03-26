@@ -35,11 +35,11 @@ class PeersManager:
 
     def get_valid_peers_names(self):
         peers = self.get_peers_list()
-        return [peer.nickname for peer in peers if peer.is_valid()]
+        return [peer.nickname for peer in peers if not peer.is_not_valid()]
 
     def get_valid_peers_to_connect(self):
         peers = self.get_peers_list()
-        return [peer for peer in peers if peer.is_valid() and peer.status != PeerStatus.OWN]
+        return [peer for peer in peers if not peer.is_not_valid() and peer.status != PeerStatus.OWN]
 
     def set_peer_status(self, nickname: str, status: PeerStatus, unban=False):
         peer = self.get_peer_by_nickname(nickname)

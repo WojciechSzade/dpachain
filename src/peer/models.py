@@ -41,8 +41,9 @@ class Peer:
             data["public_key"]
         )
 
-    def is_valid(self):
-        return self.status != PeerStatus.BANNED
+    def is_not_valid(self) -> str | None:
+        if self.status == PeerStatus.BANNED:
+            return "Peer is banned"
 
     def is_active(self):
         return self.status == PeerStatus.ACTIVE or self.status == PeerStatus.OWN
