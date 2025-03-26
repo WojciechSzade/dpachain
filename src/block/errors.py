@@ -36,3 +36,11 @@ class UnauthorizedBlockError(BlockError):
         self.block = block
         super().__init__(
             f"Block {str(block)} is unauthorized. {additional_info}")
+        
+class CouldNotRemoveBlockError(BlockError):
+    """Raised when a block could not be removed from the chain"""
+
+    def __init__(self, block: str, additional_info: str = ""):
+        self.block = block
+        super().__init__(
+            f"Could not remove block {str(block)}. {additional_info}")

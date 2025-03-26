@@ -34,7 +34,7 @@ class BlockManager:
 
     def set_peer_manager(self, peer_manager: PeersManager):
         self.peer_manager = peer_manager
-        
+
     def set_node_manager(self, node_manager):
         self.node_manager = node_manager
 
@@ -67,7 +67,7 @@ class BlockManager:
         self.blocks.insert_one(block.dict)
 
     @require_authorized
-    def create_new_block(self, diploma_type: str, pdf_hash: str, authors: (list[str] | str), title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), additional_info: (str | None) = None):
+    def create_new_block(self, diploma_type: str, pdf_file: str, authors: (list[str] | str), title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), additional_info: (str | None) = None):
         last_block = self.get_latest_block()
         if last_block is None:
             raise BlockNotFoundError(
@@ -75,6 +75,7 @@ class BlockManager:
             )
         previous_block = last_block.hash
         _id = last_block._id + 1
+        pdf_hash = Block.calculate_pdf_hash(pdf_file)
         block = Block.create_block(
             previous_block,
             _id,
@@ -100,7 +101,7 @@ class BlockManager:
         except Exception as e:
             logger.error(f"Failed to insert block: {e}")
             raise e
-        
+        return block
 
     def get_latest_block(self):
         return Block.from_dict(self.blocks.find_one(sort=[('_id', -1)])) if self.blocks.count_documents({}) > 0 else None
@@ -132,14 +133,16 @@ class BlockManager:
             logger.error(f"Failed to validate block: {e}")
             raise e
         self.blocks.insert_one(block.dict)
+        return block
 
     def validate_block(self, block):
-        previous_block = self.get_block_by_index(block._id - 1) if block._id > 0 else None
+        previous_block = self.get_block_by_index(
+            block._id - 1) if block._id > 0 else None
         if previous_block is None and block._id != 0:
             raise UnauthorizedBlockError(
                 block, "Could not validate block, because previous block does not exist"
             )
-        
+
         if previous_block and previous_block.hash != block.previous_block:
             raise UnauthorizedBlockError(
                 block, "Could not validate block, because previous block hash does not match"
@@ -159,3 +162,18 @@ class BlockManager:
             raise UnauthorizedBlockError(
                 block, "Could not validate block, because hash signed (with author's key) does not match"
             )
+
+    def remove_block(self, index):
+        block = self.get_block_by_index(index)
+        if block is None:
+            raise BlockNotFoundError(
+                index, "Could not remove block, because it does not exist"
+            )
+        if block._id != self.get_chain_size() - 1:
+            raise CouldNotRemoveBlockError(
+                block, "Could not remove block, because it is not the last block in the chain")
+        self.blocks.delete_one({"_id": index})
+        return block
+    
+    def compare_blocks(self, block1, block2):
+        return block1.dict == block2.dict

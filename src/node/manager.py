@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 import random
 from p2pd import *
@@ -131,17 +132,7 @@ class NodeManager:
                 if block is None:
                     logger.error("Failed to get block from peer")
                     continue
-                if not self.block_manager.add_block(block):
-                    logger.error("Failed to add block to blockchain")
-                    continue
-            return "Chain has been synced!"
-
-        # connect to it
-        # sync node list
-        # compare blokchain(size and last hash)
-        # foreaach missing block ask_for_block
-        # if sent an invalid one - ban the node, repeat process
-        # synced
+                self.block_manager.add_block(block)
         return "Chain has been synced!"
 
     def select_best_node(self, responses):
@@ -211,3 +202,87 @@ class NodeManager:
             raise PeerNotFoundError(nickname)
         await self.protocol_manager.ask_to_sync(pipe)
         return
+
+    async def generate_new_block(self, diploma_type: str, pdf_file: str, authors: (list[str] | str), title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), additional_info: (str | None) = None):
+        # for loop
+        # await self.sync_chain()
+        block = self.block_manager.create_new_block(diploma_type, pdf_file, authors,
+                                                    title, language, discipline, is_defended, date_of_defense,
+                                                    university, faculty, supervisor, reviewer,
+                                                    additional_info=None)
+        nodes_list = self.peers_manager.get_valid_peers_to_connect()
+        responses = []
+        logger.info(f"Nodes list: {nodes_list}")
+        for node in nodes_list:
+            logger.info(f"Connecting to {node.nickname}")
+            pipe = await self.node.connect(node.nickname)
+            if pipe is None:
+                logger.info(
+                    f"Failed to connect to {node.nickname} with previous state {self.peers_manager.get_peer_state(node.nickname)}")
+                self.peers_manager.set_peer_status(
+                    node.nickname, PeerStatus.INACTIVE)
+                continue
+            logger.info(f"Connected to {node.nickname}")
+            logger.info(f"Pipe is {pipe.sock}")
+            chain_size = await self.protocol_manager.request_chain_size(pipe)
+            if chain_size is None:
+                logger.info(f"Failed to get chain size from {node.nickname}")
+                self.peers_manager.set_peer_status(
+                    node.nickname, PeerStatus.INACTIVE)
+                continue
+            responses.append(
+                {"pipe": pipe, "node": node, "chain_size": chain_size})
+        # select best node
+        if len(responses) == 0:
+            raise NoPeersAviableError()
+        best_nodes = self.select_best_node(responses)
+        for best_node in best_nodes:
+            logger.info(f"Connect to best node {best_node['node'].nickname}")
+            pipe = await self.node.connect(best_node['node'].nickname)
+            if pipe is None:
+                logger.info(
+                    f"Failed to connect to {best_node['node'].nickname} with previous state {self.peers_manager.get_peer_state(best_node['node'].nickname)}")
+                self.peers_manager.set_peer_status(
+                    best_node['node'].nickname, PeerStatus.INACTIVE)
+                continue
+            await self.protocol_manager.ask_to_sync(pipe)
+        for i in range(0, 10):
+            logger.info(f"SLEEPING iteration {i}")
+            time.sleep(10)  # TODO change to bigger
+            for best_node in best_nodes:
+                pipe = await self.node.connect(best_node['node'].nickname)
+                if pipe is None:
+                    logger.info(
+                        f"Failed to connect to {best_node['node'].nickname} with previous state {self.peers_manager.get_peer_state(best_node['node'].nickname)}")
+                    self.peers_manager.set_peer_status(
+                        best_node['node'].nickname, PeerStatus.INACTIVE)
+                    continue
+                res = await self.protocol_manager.request_compare_blockchain(pipe)
+                if res is None:
+                    logger.error("Failed to get response from peer")
+                    continue
+                own_chain_size = self.block_manager.get_chain_size()
+                own_last_block_hash = self.block_manager.get_latest_block(
+                ).hash if own_chain_size > 0 else None
+                chain_size, last_block_hash = res
+                logger.info(
+                    f"Own chain size = {chain_size}, Own last block hash = {last_block_hash}")
+                logger.info(
+                    f"Received peer chain size = {chain_size}, Peer last block hash = {last_block_hash}")
+                if chain_size >= own_chain_size:
+                    pipe = await self.node.connect(best_node['node'].nickname)
+                    if pipe is None:
+                        logger.info(f"Failed to connect to {best_node['node'].nickname} with previous state {self.peers_manager.get_peer_state(best_node['node'].nickname)}")
+                    received_block = await self.protocol_manager.request_block(
+                        pipe, own_chain_size - 1)
+                    if received_block is None:
+                        logger.error("Failed to get block from peer")
+                        continue
+                    if self.block_manager.compare_blocks(received_block, block):
+                        logger.info(f"SUCCESS!!!")
+                        return "Block has been added to blockchain!"
+                    else:
+                        logger.error("Received block is not the same!")
+                        continue
+        self.block_manager.remove_block(block._id)
+        return "Failed to add block to blockchain"

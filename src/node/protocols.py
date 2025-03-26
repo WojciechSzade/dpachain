@@ -26,10 +26,8 @@ class ProtocolManager:
     def parse_message(msg):
         if msg is not None:
             if not msg[:8] == b"DPACHAIN":
-                logger.info(f"A non DPACHAIN message received: {msg}")
                 return
         else:
-            logger.error("Received empty message")
             return
         msg = msg[8:]
         try:
@@ -37,7 +35,6 @@ class ProtocolManager:
         except json.JSONDecodeError:
             logger.error(f"Invalid JSON message received {msg}")
             return
-        logger.info(f"Received proper message: {msg}")
         protocol = msg.get("protocol")
         author = msg.get("author")
         payload = msg.get("payload")
@@ -46,11 +43,10 @@ class ProtocolManager:
             logger.error(f"Invalid message structure: {msg}")
             return
         logger.info(
-            f"After parsing: protocol: {protocol}, author: {author}, payload: {payload}")
+            f"RECEIVED MESSAGE: protocol: {protocol}, author: {author}, payload: {payload}")
         return protocol, author, payload
 
     def get_author_peer(self, author, protocol):
-        logger.info(f"Getting author peer {author}")
         try:
             author_peer = self.peers_manager._get_peer_by_nickname(author)
             if protocol != 'new_peer' and author_peer is None:
@@ -69,7 +65,6 @@ class ProtocolManager:
     async def add_peer_protocole_support(self, msg, client_tup, pipe):
         parse = self.parse_message(msg)
         if parse is None:
-            logger.error("Failed to parse message")
             return
         protocol, author, payload = parse
         author_peer = self.get_author_peer(author, protocol)
@@ -122,23 +117,31 @@ class ProtocolManager:
         logger.error("Unknown author")
         pass
 
-    @staticmethod
-    async def send_message(pipe, msg, wait_response=False):
+    async def send_message(self, pipe, msg, wait_response=False):
         """Send message to peer"""
-        logger.info(f"SEND_MESSAGE Sending message {msg}")
         msg = json.dumps(msg).encode('utf-8')
-        logger.info(
-            f"SEND_MESSAGE Sending message {msg} (after json and encode)")
+        logger.info(f"SEND_MESSAGE {msg}")
         msg = b"DPACHAIN" + msg
-        logger.info(f"Sending message to {pipe}")
-        logger.info(f"Message:\n {msg}")
         await pipe.send(msg)
         if wait_response:
-            res = await pipe.recv(timeout=100)
-            if res is None:
-                logger.error("Failed to receive response from peer")
-                return None
-            return res
+            for i in range(10):
+                logger.info(f"AWAIT_MESSAGE - iteration {i}")
+                res = await pipe.recv(timeout=20)
+                if res is None:
+                    logger.info(
+                        f"Awaiting timedout.")
+                    raise Exception()
+                response = {}
+                response["protocol"], response["author"], response["payload"] = self.parse_message(
+                    res)
+                if response["protocol"] != wait_response:
+                    logger.info(
+                        f"While awaiting response with {wait_response} received a {response["protocol"]} message - continue waiting")
+                    continue
+                return response["protocol"], response["author"], response["payload"]
+            else:
+                logger.error(f"Failed to get response from {pipe}.")
+                raise Exception()
 
     async def request_chain_size(self, pipe):
         """Send request to get chain size from peer"""
@@ -147,21 +150,13 @@ class ProtocolManager:
             "author": self.peers_manager.get_own_peer_name(),
             "payload": None
         }
-        logger.info(f"Requesting chain size from {pipe}")
-        logger.info(f"Message:\n {msg}")
 
-        res = None
+        response = {}
         try:
-            res = await self.send_message(pipe, msg, wait_response=True)
+            response["protocol"], response["author"], response["payload"] = await self.send_message(pipe, msg, wait_response="response_chain_size")
         except Exception as e:
             logger.error(f"Failed to get chain size from peer: {e}")
-
-        if res is None:
-            logger.error("Failed to get chain size from peer")
             return
-        response = {}
-        response["protocol"], response["author"], response["payload"] = self.parse_message(
-            res)
         if response["payload"] is None:
             logger.error("Failed to get chain size from peer")
             return
@@ -176,8 +171,6 @@ class ProtocolManager:
             "author": self.peers_manager.get_own_peer_name(),
             "payload": chain_size
         }
-        logger.info(f"Sending chain size to {pipe}")
-        logger.info(f"Message:\n {msg}")
         await self.send_message(pipe, msg)
         await pipe.close()
         return
@@ -189,21 +182,18 @@ class ProtocolManager:
             "author": self.peers_manager.get_own_peer_name(),
             "payload": None
         }
-        logger.info(f"Requesting to compare blockchain with {pipe}")
-        logger.info(f"Message:\n {msg}")
-        res = await self.send_message(pipe, msg, wait_response=True)
-        if res is None:
+        response = {}
+        try:
+            response["protocol"], response["author"], response["payload"] = await self.send_message(pipe, msg, wait_response="response_compare_blockchain")
+        except Exception as e:
             logger.error("Failed to get response from peer")
             return
-        response = {}
-        response["protocol"], response["author"], response["payload"] = self.parse_message(
-            res)
         if response["payload"] is None:
             logger.error("Failed to get response from peer")
             return
         chain_size = response.get("payload").get("chain_size")
         last_block_hash = response.get("payload").get("last_block_hash")
-        if chain_size is None or last_block_hash is None:
+        if chain_size is None:
             logger.error(
                 "Failed to get chain size or last block hash from peer")
             return
@@ -221,8 +211,6 @@ class ProtocolManager:
             "author": self.peers_manager.get_own_peer_name(),
             "payload": {"chain_size": own_chain_size, "last_block_hash": own_last_block_hash}
         }
-        logger.info(f"Sending compare blockchain response to {pipe}")
-        logger.info(f"Message:\n {msg}")
         await self.send_message(pipe, msg)
         await pipe.close()
         return
@@ -234,16 +222,12 @@ class ProtocolManager:
             "author": self.peers_manager.get_own_peer_name(),
             "payload": {"block_index": block_index}
         }
-        logger.info(f"Requesting block with index {block_index} from {pipe}")
-        logger.info(f"Message:\n {msg}")
-        res = await self.send_message(pipe, msg, wait_response=True)
-        logger.info("Something responded or timed-out")
-        if res is None:
+        response = {}
+        try:
+            response["protocol"], response["author"], response["payload"] = await self.send_message(pipe, msg, wait_response="response_block")
+        except Exception as e:
             logger.error("Failed to get response from peer")
             return
-        response = {}
-        response["protocol"], response["author"], response["payload"] = self.parse_message(
-            res)
         if response["payload"] is None:
             logger.error("Failed to get block from peer")
             return
@@ -264,8 +248,6 @@ class ProtocolManager:
             "author": self.peers_manager.get_own_peer_name(),
             "payload": {"block": block.dict}
         }
-        logger.info(f"Sending block with index {block_index} to {pipe}")
-        logger.info(f"Message:\n {msg}")
         await self.send_message(pipe, msg)
         logger.info(f"Message sent - closing.")
         await pipe.close()
@@ -281,8 +263,6 @@ class ProtocolManager:
                 "adress": self.peers_manager.get_own_peer_adress(),
             }
         }
-        logger.info(f"Presenting self to {pipe}")
-        logger.info(f"Message:\n {msg}")
         await self.send_message(pipe, msg)
         await pipe.close()
         return
@@ -307,7 +287,6 @@ class ProtocolManager:
             "author": self.peers_manager.get_own_peer_name(),
             "payload": None
         }
-        logger.info(f"Asking {pipe} to sync chain")
         await self.send_message(pipe, msg)
         return
 
