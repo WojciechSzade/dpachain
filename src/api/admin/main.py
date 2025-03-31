@@ -35,16 +35,10 @@ def generate_genesis_block(block_service: BlockService = Depends(get_block_servi
 
 @router.post("/generate_new_block")
 async def generate_next_block(diploma_type: str, pdf_file: Annotated[bytes, File()], authors: (list[str] | str), title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), additional_info: (str | None) = None, node_service: NodeService = Depends(get_node_service)):
-    # try:
-    #     block_service.create_new_block(diploma_type, block_service.calculate_pdf_hash(pdf_file), authors, title, language, discipline,
-    #                                    is_defended, date_of_defense, university, faculty, supervisor, reviewer, additional_info)
-    # except Exception as e:
-    #     return {"message": f"Failed to create block: {e}"}
-    await node_service.generate_new_block(diploma_type, pdf_file, authors,
-                                        title, language, discipline, is_defended, date_of_defense,
-                                        university, faculty, supervisor, reviewer,
-                                        additional_info=None)
-    return {"message": "Block has been generated!"}
+    return {"message": await node_service.generate_new_block(diploma_type, pdf_file, authors,
+                                                             title, language, discipline, is_defended, date_of_defense,
+                                                             university, faculty, supervisor, reviewer,
+                                                             additional_info=None)}
 
 
 @router.post("/admin/add_new_authorized_peer")

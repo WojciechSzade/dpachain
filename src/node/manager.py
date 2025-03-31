@@ -2,9 +2,10 @@ from datetime import datetime
 import logging
 import random
 from p2pd import *
-from tenacity import after_log, before_log, before_sleep_log, retry, stop_after_attempt
+from tenacity import after_log, before_log, before_sleep_log, retry, stop_after_attempt, retry_if_result
 
 from src.block.manager import BlockManager
+from src.block.models import Block
 from src.node.protocols import ProtocolManager
 from src.node.errors import *
 from src.peer.errors import PeerNotFoundError
@@ -45,7 +46,6 @@ class NodeManager:
                 f"Setting node adress to ip {self.node.addr_bytes.decode()}")
             self.peers_manager.change_own_peer_nickname(
                 self.node.addr_bytes.decode())
-        # await self.connect_to_nodes()
 
     async def stop(self):
         await self.node.close()
@@ -80,7 +80,7 @@ class NodeManager:
             raise NoPeersAviableError()
         best_nodes = self.select_best_peer(responses)
         for best_node in best_nodes:
-            logger.info(f"Connect to best node {best_node['node'].nickname}")
+            logger.info(f"Connect to best node {best_node.nickname}")
             try:
                 pipe = await self.connect_to_peer(peer)
             except PeerUnavailableError:
@@ -158,7 +158,7 @@ class NodeManager:
         best_unathorized.sort(key=lambda x: random.random())
         best_nodes = best_authorized + best_unathorized
         if len(best_nodes) > 0:
-            return best_nodes
+            return [node['node'] for node in best_nodes]
         raise NoPeersAviableError()
 
     @retry(
@@ -190,20 +190,28 @@ class NodeManager:
 
     async def present_to_peer(self, nickname):
         peer = self.peers_manager.get_peer_by_nickname(nickname)
-        pipe = await self.node.connect(nickname)
+        pipe = await self.node.connect(peer.nickname)
         if pipe is None:
-            raise PeerNotFoundError(nickname)
+            raise PeerNotFoundError(peer.nickname)
+        pipe = await self.node.connect(peer.nickname)
         await self.protocol_manager.present_self(pipe)
         return
 
     async def ask_peer_to_sync(self, nickname):
         peer = self.peers_manager.get_peer_by_nickname(nickname)
-        pipe = await self.node.connect(nickname)
+        pipe = await self.node.connect(peer.nickname)
         if pipe is None:
             raise PeerNotFoundError(nickname)
+        pipe = await self.node.connect(pipe.nickname)
         await self.protocol_manager.ask_to_sync(pipe)
         return
 
+    @retry(
+        stop=stop_after_attempt(max_tries),
+        before=before_log(logger, logging.INFO),
+        after=after_log(logger, logging.WARN),
+        before_sleep=before_sleep_log(logger, logging.INFO)
+    )
     async def generate_new_block(self, diploma_type: str, pdf_file: str, authors: (list[str] | str), title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), additional_info: (str | None) = None):
         await self.sync_chain()
         block = self.block_manager.create_new_block(diploma_type, pdf_file, authors,
@@ -228,52 +236,17 @@ class NodeManager:
                 {"pipe": pipe, "node": peer, "chain_size": chain_size})
         if len(responses) == 0:
             raise NoPeersAviableError()
-        best_peer = self.select_best_peer(responses)
-        for best_node in best_peer:
-            logger.info(f"Connect to best node {best_node['node'].nickname}")
-            pipe = await self.node.connect(best_node['node'].nickname)
+        best_peers_list = self.select_best_peer(responses)
+        for peer in best_peers_list:
+            logger.info(f"Connect to best node {peer.nickname}")
             try:
                 pipe = await self.connect_to_peer(peer)
             except PeerUnavailableError:
                 continue
             await self.protocol_manager.ask_to_sync(pipe)
-        for i in range(0, 50):
-            logger.info(f"SLEEPING iteration {i}")
-            time.sleep(10)  # TODO change to bigger
-            for best_node in best_peer:
-                try:
-                    pipe = await self.connect_to_peer(peer)
-                except PeerUnavailableError:
-                    continue
-                try:
-                    res = await self.protocol_manager.request_compare_blockchain(pipe)
-                except NodeError as e:
-                    logger.error(f"Failed to get response from peer: {str(e)}")
-                    continue
-                own_chain_size = self.block_manager.get_chain_size()
-                own_last_block_hash = self.block_manager.get_latest_block(
-                ).hash if own_chain_size > 0 else None
-                chain_size, last_block_hash = res
-                logger.info(
-                    f"Own chain size = {chain_size}, Own last block hash = {last_block_hash}")
-                logger.info(
-                    f"Received peer chain size = {chain_size}, Peer last block hash = {last_block_hash}")
-                if chain_size >= own_chain_size:
-                    pipe = await self.node.connect(best_node['node'].nickname)
-                    if pipe is None:
-                        logger.info(
-                            f"Failed to connect to {best_node['node'].nickname} with previous state {self.peers_manager.get_peer_state(best_node['node'].nickname)}")
-                    received_block = await self.protocol_manager.request_block(
-                        pipe, own_chain_size - 1)
-                    if received_block is None:
-                        logger.error("Failed to get block from peer")
-                        continue
-                    if self.block_manager.compare_blocks(received_block, block):
-                        logger.info(f"SUCCESS!!!")
-                        return "Block has been added to blockchain!"
-                    else:
-                        logger.error("Received block is not the same!")
-                        continue
+        is_propagated = await self.check_if_block_was_added_sucessfully(block, best_peers_list)
+        if is_propagated:
+            return "Chain has been synced!"
         self.block_manager.remove_block(block._id)
         return "Failed to add block to blockchain"
 
@@ -287,3 +260,48 @@ class NodeManager:
                 peer.nickname, PeerStatus.INACTIVE)
             raise PeerUnavailableError(peer)
         return pipe
+
+    @retry(
+        stop=stop_after_attempt(max_tries),
+        before=before_log(logger, logging.INFO),
+        after=after_log(logger, logging.WARN),
+        before_sleep=before_sleep_log(logger, logging.INFO),
+        sleep=10,
+        retry=retry_if_result(lambda result: result is False)
+    )
+    async def check_if_block_was_added_sucessfully(self, block: Block, best_peers_list):
+        for peer in best_peers_list:
+            try:
+                pipe = await self.connect_to_peer(peer)
+            except PeerUnavailableError:
+                continue
+            try:
+                res = await self.protocol_manager.request_compare_blockchain(pipe)
+            except NodeError as e:
+                logger.error(f"Failed to get response from peer: {str(e)}")
+                continue
+            own_chain_size = self.block_manager.get_chain_size()
+            own_last_block_hash = self.block_manager.get_latest_block(
+            ).hash if own_chain_size > 0 else None
+            chain_size, last_block_hash = res
+            logger.info(
+                f"Own chain size = {chain_size}, Own last block hash = {last_block_hash}")
+            logger.info(
+                f"Received peer chain size = {chain_size}, Peer last block hash = {last_block_hash}")
+            if chain_size >= own_chain_size:
+                pipe = await self.node.connect(peer['node'].nickname)
+                if pipe is None:
+                    logger.info(
+                        f"Failed to connect to {peer['node'].nickname} with previous state {self.peers_manager.get_peer_state(peer['node'].nickname)}")
+                received_block = await self.protocol_manager.request_block(
+                    pipe, own_chain_size - 1)
+                if received_block is None:
+                    logger.error("Failed to get block from peer")
+                    continue
+                if self.block_manager.compare_blocks(received_block, block):
+                    logger.info(f"SUCCESS!!!")
+                    return True
+                else:
+                    logger.error("Received block is not the same!")
+                    continue    
+        return False
