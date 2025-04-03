@@ -41,15 +41,11 @@ class PeersManager:
         peers = self.get_peers_list()
         return [peer for peer in peers if not peer.is_not_valid() and peer.status != PeerStatus.OWN]
 
-    def set_peer_status(self, nickname: str, status: PeerStatus, unban=False):
-        peer = self.get_peer_by_nickname(nickname)
-        if peer.status is PeerStatus.BANNED and not unban:
-            raise PeerBannedError(nickname)
-        self.peers.update_one({"nickname": nickname}, {
+    def set_peer_status(self, peer: Peer, status: PeerStatus, unban=False):
+        if peer.get_state() == PeerStatus.BANNED and not unban:
+            raise PeerBannedError(peer.nickname)
+        self.peers.update_one({"nickname": peer.nickname}, {
                               "$set": {"status": status.value}})
-
-    def get_peer_state(self, nickname):
-        return PeerStatus(self.get_peer_by_nickname(nickname).status)
 
     def get_peers_by_state(self, state):
         return [peer for peer in self.get_peers_list() if peer.status == state]
@@ -69,28 +65,24 @@ class PeersManager:
         return new_peer
 
     def remove_peer(self, nickname):
-        peer = self._get_peer_by_nickname(nickname)
-        if peer.status == PeerStatus.OWN:
+        peer = self.get_peer_by_nickname(nickname)
+        if peer.get_state() == PeerStatus.OWN:
             raise PeerRemovalError(nickname, "Cannot remove own peer")
         elif peer.status == PeerStatus.BANNED:
             raise PeerBannedError(nickname)
         self.peers.delete_one({"nickname": nickname})
 
-    def ban_peer(self, nickname):
-        peer = self.get_peer_by_nickname(nickname)
+    def ban_peer(self, peer: Peer):
         if peer.status == PeerStatus.OWN:
-            raise PeerBannedError(nickname)
+            raise ForbiddenOperationForOwnPeerError("ban")
 
-        self.set_peer_status(nickname, PeerStatus.BANNED)
+        self.set_peer_status(peer, PeerStatus.BANNED)
 
-    def unban_peer(self, nickname):
-        if self.get_peer_by_nickname(nickname) is None:
-            logger.warning(f"Peer {nickname} does not exist")
-            return
-        if self.get_peer_state(nickname) != PeerStatus.BANNED:
-            logger.warning(f"Peer {nickname} is not banned")
-            return
-        self.set_peer_status(nickname, PeerStatus.UNKNOWN)
+    def unban_peer(self, peer: Peer):
+        if peer.get_state() != PeerStatus.BANNED:
+            msg = f"Peer {peer.nickname} had status {peer.get_state()} instead of banned - no operations were performed."
+            return msg
+        self.set_peer_status(peer, PeerStatus.UNKNOWN)
 
     def _set_own_peer(self, nickname, adress=None):
         if self.own_peer is not None:

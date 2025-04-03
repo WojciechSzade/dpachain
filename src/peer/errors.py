@@ -40,3 +40,11 @@ class OwnPeerAlreadyExistsError(PeerError):
     def __init__(self, nickname: str):
         self.nickname = nickname
         super().__init__(f"Own peer {nickname} already exists")
+
+
+class ForbiddenOperationForOwnPeerError(PeerError):
+    """Raised when you try to perform a forbidden operation for own peer."""
+    
+    def __init__(self, operation):
+        self.operation = operation
+        super().init(f"Cannot perform {operation} on own peer.")

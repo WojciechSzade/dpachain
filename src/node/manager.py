@@ -230,7 +230,7 @@ class NodeManager:
             if chain_size is None:
                 logger.info(f"Failed to get chain size from {peer.nickname}")
                 self.peers_manager.set_peer_status(
-                    peer.nickname, PeerStatus.INACTIVE)
+                    peer, PeerStatus.INACTIVE)
                 continue
             responses.append(
                 {"pipe": pipe, "node": peer, "chain_size": chain_size})
@@ -255,9 +255,9 @@ class NodeManager:
         pipe = await self.node.connect(peer.nickname)
         if pipe is None:
             logger.info(
-                f"Failed to connect to {peer.nickname} with previous state {self.peers_manager.get_peer_state(peer.nickname)}")
+                f"Failed to connect to {peer.nickname} with previous state {peer.get_state()}")
             self.peers_manager.set_peer_status(
-                peer.nickname, PeerStatus.INACTIVE)
+                peer, PeerStatus.INACTIVE)
             raise PeerUnavailableError(peer)
         return pipe
 
@@ -303,5 +303,5 @@ class NodeManager:
                     return True
                 else:
                     logger.error("Received block is not the same!")
-                    continue    
+                    continue
         return False

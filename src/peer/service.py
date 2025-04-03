@@ -7,7 +7,9 @@ class PeerService:
         self.peer_manager = peer_manager
 
     def add_new_peer(self, nickname, adress, is_authorized, public_key=None):
-        return self.peer_manager.add_new_peer(nickname, adress, is_authorized, public_key)
+        self.peer_manager.add_new_peer(
+            nickname, adress, is_authorized, public_key)
+        return "Peer has been added"
 
     def get_peers_list(self):
         peers = self.peer_manager.get_peers_list()
@@ -16,10 +18,13 @@ class PeerService:
         return peers
 
     def remove_peer(self, nickname):
-        return self.peer_manager.remove_peer(nickname)
+        self.peer_manager.remove_peer(nickname)
+        return "Peer has been removed"
 
     def ban_peer(self, nickname):
-        return self.peer_manager.ban_peer(nickname)
+        self.peer_manager.ban_peer(nickname)
+        return "Peer has been banned"
 
     def unban_peer(self, nickname):
-        return self.peer_manager.unban_peer(nickname)
+        msg = self.peer_manager.unban_peer(nickname)
+        return msg if msg else "Peer has been unbanned"

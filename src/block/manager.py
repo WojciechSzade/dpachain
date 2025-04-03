@@ -125,6 +125,9 @@ class BlockManager:
 
     def get_block_by_index(self, index):
         return Block.from_dict(self.blocks.find_one({"_id": index}))
+    
+    def get_block_by_hash(self, hash):
+        return Block.from_dict(self.blocks.find_one({"hash": hash}))
 
     def add_block(self, block):
         try:

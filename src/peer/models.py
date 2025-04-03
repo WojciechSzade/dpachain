@@ -47,3 +47,6 @@ class Peer:
 
     def is_active(self):
         return self.status == PeerStatus.ACTIVE or self.status == PeerStatus.OWN
+    
+    def get_state(self):
+        return PeerStatus(self.status)

@@ -60,7 +60,7 @@ class ProtocolManager:
                 logger.error(e)
                 raise e
             self.peers_manager.set_peer_status(
-                author_peer.nickname, PeerStatus.ACTIVE)
+                author_peer, PeerStatus.ACTIVE)
         return author_peer
 
     async def add_peer_protocole_support(self, msg, client_tup, pipe):
