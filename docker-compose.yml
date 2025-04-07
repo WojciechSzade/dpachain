@@ -1,5 +1,6 @@
 x-backend-base: &backend-base
-  build: .
+  build: 
+    context: ./dpachain-api
   depends_on:
     - dpachain-db
     - dpachain-db2
@@ -12,7 +13,7 @@ services:
   dpachain-db:
     container_name: dpachain-db
     env_file:
-      - .env
+      - ./dpachain-api/.env
     image: mongodb/mongodb-community-server:latest
     environment:
       - MONGODB_INITDB_ROOT_USERNAME=user
@@ -26,7 +27,7 @@ services:
     <<: *backend-base
     container_name: dpachain-api
     env_file:
-      - .env
+      - ./dpachain-api/.env
     ports:
       - "8000:8000"
     environment:
@@ -38,7 +39,7 @@ services:
   dpachain-db2:
     container_name: dpachain-db2
     env_file:
-      - .env2
+      - ./dpachain-api/.env2
     image: mongodb/mongodb-community-server:latest
     environment:
       - MONGODB_INITDB_ROOT_USERNAME=user
@@ -53,7 +54,7 @@ services:
     <<: *backend-base
     container_name: dpachain-api2
     env_file:
-      - .env2
+      - ./dpachain-api/.env2
     ports:
       - "8001:8001"
     environment:
