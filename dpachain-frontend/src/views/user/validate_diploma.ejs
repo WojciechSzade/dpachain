@@ -1,0 +1,32 @@
+<div class="container">
+  <h2>Validate a Diploma</h2>
+  <form method="POST" action="/user/validate_diploma">
+    <div class="mb-3">
+      <label for="block_hash" class="form-label">Enter diploma's hash</label>
+      <input type="text" class="form-control" id="block_hash" name="block_hash" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Validate</button>
+  </form>
+  <% if (block) { %>
+    <div class="mt-4">
+      <h4>Diploma Details:</h4>
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% block.forEach(field => { %>
+            <tr>
+              <td><%= field.label %></td>
+              <td><%= field.value %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+  <a href="/user" class="btn btn-secondary mt-3">Back to User Home</a>
+</div>
