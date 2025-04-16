@@ -3,7 +3,6 @@
  * Adjust the `order` array below to change which fields appear and in what order.
  */
 function parseDiploma(block) {
-    // Define the desired order and labels for each field
     const order = [
         { key: '_id', label: 'Block ID' },
         { key: 'timestamp', label: 'Timestamp' },
@@ -26,13 +25,13 @@ function parseDiploma(block) {
         { key: 'signed_hash', label: 'Signed Hash' }
     ];
 
-    // Map each field to an object containing its label and value.
-    // If a field is missing, we show an empty string.
     const parsed = order.map(item => ({
         label: item.label,
         value: block[item.key] !== undefined ? block[item.key] : ''
     }));
     return parsed;
 }
+
+
 
 module.exports = parseDiploma;

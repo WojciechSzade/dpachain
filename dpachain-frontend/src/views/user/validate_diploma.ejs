@@ -7,7 +7,10 @@
     </div>
     <button type="submit" class="btn btn-primary">Validate</button>
   </form>
-  <% if (block) { %>
+  <% if (typeof error !== 'undefined') { %>
+    <p>Error: <%= error.msg %></p>
+    <% } %>
+  <% if (typeof block !== 'undefined') { %>
     <div class="mt-4">
       <h4>Diploma Details:</h4>
       <table class="table table-bordered">
