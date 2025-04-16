@@ -1,0 +1,17 @@
+{
+    "name": "dpachain-api-manager",
+    "version": "0.1.0",
+    "description": "A simple Node.js app to manage the DPAChain API endpoints.",
+    "main": "app.js",
+    "scripts": {
+        "start": "node app.js"
+    },
+    "dependencies": {
+        "ejs": "^3.1.10",
+        "express": "^4.21.2",
+        "express-ejs-layouts": "^2.5.1"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC"
+}

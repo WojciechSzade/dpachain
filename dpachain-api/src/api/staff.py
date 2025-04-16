@@ -31,3 +31,11 @@ async def generate_next_block(diploma_type: str, pdf_file: Annotated[bytes, File
                                                                  additional_info=None)}
     except (PeerError, NodeError, BlockError) as e:
         return handle_error(e)
+
+
+@router.get("/staff/get_all_blocks")
+async def get_all_blocks(block_service: BlockService = Depends(get_block_service)):
+    try:
+        return {"blocks": block_service.get_all_blocks()}
+    except BlockError as e:
+        return handle_error(e)
