@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const parseDiplomas = require('../utils/parseDiplomas')
+const parseDiplomas = require('../../utils/parseDiplomas')
 const createDiploma = require('./create_diploma');
 
 

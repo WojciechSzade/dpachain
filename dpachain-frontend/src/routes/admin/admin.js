@@ -1,0 +1,14 @@
+const express = require('express');
+const router = express.Router();
+
+const addNewPeer = require('./add_new_peer');
+const addNewAuthorizedPeer = require('./add_new_authorized_peer');
+
+router.get('/', (req, res) => {
+  res.render('admin/index', { title: 'Admin section' });
+});
+
+router.use('/', addNewPeer);
+router.use('/', addNewAuthorizedPeer);
+
+module.exports = router;

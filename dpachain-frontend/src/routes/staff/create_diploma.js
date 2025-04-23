@@ -2,7 +2,7 @@ const express = require('express');
 const { URL } = require('url');
 const { Blob } = require('buffer');
 const multer = require('multer');
-const parseDiploma = require('../utils/parseDiploma');
+const parseDiploma = require('../../utils/parseDiploma');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });

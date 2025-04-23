@@ -17,8 +17,8 @@ app.use(express.urlencoded({ extended: true }));
 
 
 // Mount routers
-// app.use('/admin', require('./routes/admin'));
-app.use('/staff', require('./routes/staff'));
+app.use('/admin', require('./routes/admin/admin'));
+app.use('/staff', require('./routes/staff/staff'));
 app.use('/user', require('./routes/user'));
 
 // Home page: simple navigation page linking to each section
