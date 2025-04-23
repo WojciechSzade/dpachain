@@ -1,0 +1,20 @@
+<div class="container mt-4">
+    <h2>Sync Chain</h2>
+
+    <% if (error) { %>
+        <div class="alert alert-danger">
+            <%= error %>
+        </div>
+        <% } %>
+            <% if (message) { %>
+                <div class="alert alert-success">
+                    <%= message %>
+                </div>
+                <% } %>
+
+                    <form method="POST" action="/admin/sync_chain">
+                        <button type="submit" class="btn btn-primary">Start Sync</button>
+                    </form>
+
+                    <a href="/admin" class="btn btn-secondary mt-3">Back to Admin Home</a>
+</div>
