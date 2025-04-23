@@ -1,0 +1,100 @@
+<div class="container mt-4">
+  <h2>Create diploma</h2>
+
+  <% if (error) { %>
+    <div class="alert alert-danger">
+      <%= error.msg %>
+    </div>
+    <% } %>
+
+      <form method="POST" action="/staff/create_diploma" enctype="multipart/form-data">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Diploma Type*</label>
+            <input type="text" name="diploma_type" class="form-control" required value="<%= form.diploma_type || '' %>">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Title*</label>
+            <input type="text" name="title" class="form-control" required value="<%= form.title || '' %>">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Language*</label>
+            <input type="text" name="language" class="form-control" required value="<%= form.language || '' %>">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Discipline*</label>
+            <input type="text" name="discipline" class="form-control" required value="<%= form.discipline || '' %>">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Defended? (0/1)*</label>
+            <input type="number" min="0" max="1" name="is_defended" class="form-control" required
+              value="<%= form.is_defended || '0' %>">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Date of Defense*</label>
+            <input type="date" name="date_of_defense" class="form-control" required
+              value="<%= form.date_of_defense || '' %>">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">University*</label>
+            <input type="text" name="university" class="form-control" required value="<%= form.university || '' %>">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Faculty*</label>
+            <input type="text" name="faculty" class="form-control" required value="<%= form.faculty || '' %>">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Additional Info</label>
+            <textarea name="additional_info" class="form-control"><%= form.additional_info || '' %></textarea>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Authors*</label>
+            <input type="text" name="authors" class="form-control" required placeholder="Comma-separated"
+              value="<%= Array.isArray(form.authors) ? form.authors.join(',') : form.authors || '' %>">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Supervisor*</label>
+            <input type="text" name="supervisor" class="form-control" required placeholder="Comma-separated"
+              value="<%= Array.isArray(form.supervisor) ? form.supervisor.join(',') : form.supervisor || '' %>">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Reviewer*</label>
+            <input type="text" name="reviewer" class="form-control" required placeholder="Comma-separated"
+              value="<%= Array.isArray(form.reviewer) ? form.reviewer.join(',') : form.reviewer || '' %>">
+          </div>
+          <div class="col-12">
+            <label class="form-label">PDF File*</label>
+            <input type="file" name="pdf_file" class="form-control" accept="application/pdf" required>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary mt-3">Create diploma</button>
+      </form>
+
+      <% if (block) { %>
+        <div class="mt-5">
+          <h4>Created diploma details:</h4>
+          <table class="table table-bordered">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% block.forEach(field=> { %>
+                <tr>
+                  <td>
+                    <%= field.label %>
+                  </td>
+                  <td>
+                    <%= field.value %>
+                  </td>
+                </tr>
+                <% }); %>
+            </tbody>
+          </table>
+        </div>
+        <% } %>
+
+          <a href="/staff" class="btn btn-secondary mt-3">Back to Staff Home</a>
+</div>

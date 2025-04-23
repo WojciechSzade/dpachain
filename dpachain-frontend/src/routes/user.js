@@ -6,13 +6,11 @@ router.get('/', (req, res) => {
   res.render('user/index', { title: 'User Section' });
 });
 
-// GET page for "Validate a diploma"
-// GET page for "Validate a diploma"
 router.get('/validate_diploma', async (req, res) => {
   const { block_hash } = req.query;
 
   if (!block_hash) {
-    return res.render('user/validate_diploma', { title: 'Validate a Diploma', block: null });
+    return res.render('user/validate_diploma', { title: 'Validate a Diploma' });
   }
 
   try {

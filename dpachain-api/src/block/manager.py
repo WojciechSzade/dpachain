@@ -104,7 +104,9 @@ class BlockManager:
         return block
 
     def get_latest_block(self):
-        return Block.from_dict(self.blocks.find_one(sort=[('_id', -1)])) if self.blocks.count_documents({}) > 0 else None
+        if self.blocks.count_documents({}) < 1:
+            raise BlockNotFoundError("latest", "No blocks in the database.")
+        return Block.from_dict(self.blocks.find_one(sort=[('_id', -1)]))
 
     def get_all_blocks(self):
         return [Block.from_dict(block) for block in self.blocks.find(sort=[('_id', 1)])] if self.blocks.count_documents({}) > 0 else []
@@ -125,9 +127,12 @@ class BlockManager:
 
     def get_block_by_index(self, index):
         return Block.from_dict(self.blocks.find_one({"_id": index}))
-    
+
     def get_block_by_hash(self, hash):
-        return Block.from_dict(self.blocks.find_one({"hash": hash}))
+        block = self.blocks.find_one({"hash": hash})
+        if not block:
+            raise BlockNotFoundError(hash)
+        return Block.from_dict(block)
 
     def add_block(self, block):
         try:
@@ -177,6 +182,6 @@ class BlockManager:
                 block, "Could not remove block, because it is not the last block in the chain")
         self.blocks.delete_one({"_id": index})
         return block
-    
+
     def compare_blocks(self, block1, block2):
         return block1.dict == block2.dict

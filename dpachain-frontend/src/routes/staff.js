@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const parseDiplomas = require('../utils/parseDiplomas')
+const createDiploma = require('./create_diploma');
+
 
 router.get('/', (req, res) => {
     res.render('staff/index', { title: 'Staff Section' });
@@ -25,5 +27,8 @@ router.get('/diplomas', async (req, res) => {
         res.render('staff/diplomas', { title: 'Diplomas list', blocks: [[{ label: 'Error', value: error.message }]] });
     }
 });
+
+router.use('/', createDiploma);
+
 
 module.exports = router;
