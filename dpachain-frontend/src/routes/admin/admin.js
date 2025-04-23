@@ -3,12 +3,14 @@ const router = express.Router();
 
 const addNewPeer = require('./add_new_peer');
 const addNewAuthorizedPeer = require('./add_new_authorized_peer');
+const getPeersList = require('./get_peers_list');
 
 router.get('/', (req, res) => {
-  res.render('admin/index', { title: 'Admin section' });
+    res.render('admin/index', { title: 'Admin section' });
 });
 
 router.use('/', addNewPeer);
 router.use('/', addNewAuthorizedPeer);
+router.use('/', getPeersList);
 
 module.exports = router;

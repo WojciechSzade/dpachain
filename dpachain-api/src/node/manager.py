@@ -247,7 +247,7 @@ class NodeManager:
             await self.protocol_manager.ask_to_sync(pipe)
         is_propagated = await self.check_if_block_was_added_sucessfully(block, best_peers_list)
         if is_propagated:
-            return "Block has been added.", block
+            return block
         self.block_manager.remove_block(block._id)
         return "Failed to add block to blockchain"
 

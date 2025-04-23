@@ -64,13 +64,12 @@ class PeersManager:
             upsert=True)
         return new_peer
 
-    def remove_peer(self, nickname):
-        peer = self.get_peer_by_nickname(nickname)
+    def remove_peer(self, peer: Peer):
         if peer.get_state() == PeerStatus.OWN:
-            raise PeerRemovalError(nickname, "Cannot remove own peer")
+            raise PeerRemovalError(peer.nickname, "Cannot remove own peer")
         elif peer.status == PeerStatus.BANNED:
-            raise PeerBannedError(nickname)
-        self.peers.delete_one({"nickname": nickname})
+            raise PeerBannedError(peer.nickname)
+        self.peers.delete_one({"nickname": peer.nickname})
 
     def ban_peer(self, peer: Peer):
         if peer.status == PeerStatus.OWN:
@@ -82,7 +81,8 @@ class PeersManager:
         if peer.get_state() != PeerStatus.BANNED:
             msg = f"Peer {peer.nickname} had status {peer.get_state()} instead of banned - no operations were performed."
             return msg
-        self.set_peer_status(peer, PeerStatus.UNKNOWN)
+        self.set_peer_status(peer, PeerStatus.UNKNOWN, unban=True)
+        return f"Peer {peer.nickname} unbanned."
 
     def _set_own_peer(self, nickname, adress=None):
         if self.own_peer is not None:

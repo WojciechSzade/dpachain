@@ -1,0 +1,50 @@
+<div class="container mt-4">
+    <h2>Peers List</h2>
+    <% if (typeof error !=='undefined' ) { %>
+        <div class="alert alert-danger">
+            <%= error %>
+        </div>
+        <% } %>
+            <div class="table-responsive">
+                <table class="table table-striped mt-3 table-bordered align-middle">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Nickname</th>
+                            <th>Address</th>
+                            <th>Status</th>
+                            <th>Authorized</th>
+                            <th>Public Key</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% peers.forEach(peer=> { %>
+                            <tr>
+                                <td style="max-width: 300px; word-break: break-word;">
+                                    <%= peer.nickname %>
+                                </td>
+                                <td style="max-width: 300px; word-break: break-word;">
+                                    <%= peer.address %>
+                                </td>
+                                <td>
+                                    <%= peer.status %>
+                                </td>
+                                <td>
+                                    <%= peer.is_authorized ? 'Yes' : 'No' %>
+                                </td>
+                                <td style="max-width: 500px; word-break: break-word;">
+                                    <pre class="mb-0"><%= peer.public_key %></pre>
+                                </td>
+                                <td>
+                                    <a href="/admin/peer/<%= encodeURIComponent(peer.nickname) %>"
+                                        class="btn btn-outline-primary btn-sm">Details</a>
+                                </td>
+
+                                </td>
+                            </tr>
+                            <% }); %>
+                    </tbody>
+                </table>
+            </div>
+            <a href="/admin" class="btn btn-secondary mt-3">Back to Admin Home</a>
+</div>
