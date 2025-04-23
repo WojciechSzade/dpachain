@@ -194,7 +194,6 @@ class NodeManager:
         pipe = await self.node.connect(peer.nickname)
         if pipe is None:
             raise PeerNotFoundError(peer.nickname)
-        pipe = await self.node.connect(peer.nickname)
         await self.protocol_manager.present_self(pipe)
         return
 
@@ -202,10 +201,8 @@ class NodeManager:
         peer = self.peers_manager.get_peer_by_nickname(nickname)
         pipe = await self.node.connect(peer.nickname)
         if pipe is None:
-            raise PeerNotFoundError(nickname)
-        pipe = await self.node.connect(pipe.nickname)
-        await self.protocol_manager.ask_to_sync(pipe)
-        return
+            raise PeerNotFoundError(peer.nickname)
+        return await self.protocol_manager.ask_to_sync(pipe)
 
     @retry(
         stop=stop_after_attempt(max_tries),

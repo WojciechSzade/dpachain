@@ -278,6 +278,7 @@ class ProtocolManager:
             "payload": None
         }
         await self.send_message(pipe, msg)
+        await pipe.close()
         return
 
     async def handle_ask_sync(self, pipe):

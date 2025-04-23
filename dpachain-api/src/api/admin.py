@@ -93,7 +93,7 @@ async def ask_peer_to_sync(nickname: str, node_service: NodeService = Depends(ge
         await node_service.ask_peer_to_sync(nickname)
         return {"message": "Node has been asked to sync!"}
     except Exception as e:
-        return {"message": f"Failed to ask peer to sync: {e}"}
+        return handle_error(e)
 
 
 @router.post("/admin/drop_all_blocks")
