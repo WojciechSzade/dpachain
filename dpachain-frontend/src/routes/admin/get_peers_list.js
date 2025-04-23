@@ -46,15 +46,14 @@ router.get('/peer/:nickname', async (req, res) => {
 
 router.post('/peer/:nickname/:action', async (req, res) => {
     const { nickname, action } = req.params;
-    const allowed = ['remove', 'ban', 'unban'];
+    const allowed = ['remove_peer', 'ban_peer', 'unban_peer', 'present_to_peer', 'ask_peer_to_sync'];
     if (!allowed.includes(action)) return res.status(400).send('Invalid action');
 
     try {
-        const url = new URL(`http://localhost:8000/admin/${action}_peer`);
+        const url = new URL(`http://localhost:8000/admin/${action}`);
         url.searchParams.append('nickname', nickname);
         const apiRes = await fetch(url.toString(), { method: 'POST' });
         const text = await apiRes.text();
-        // After action, re-fetch detail
         const redirectUrl = `/admin/peer/${encodeURIComponent(nickname)}?message=${encodeURIComponent(text)}`;
         res.redirect(redirectUrl);
     } catch (err) {
