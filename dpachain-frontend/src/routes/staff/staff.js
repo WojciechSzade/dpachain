@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const parseDiplomas = require('../../utils/parseDiplomas')
 const createDiploma = require('./create_diploma');
+const { API_BASE_URL } = require('../../config');
 
 
 router.get('/', (req, res) => {
@@ -12,7 +13,8 @@ router.get('/', (req, res) => {
 router.get('/diplomas', async (req, res) => {
     const { blocks } = req.body;
     try {
-        const apiRes = await fetch(`http://localhost:8000/staff/get_all_blocks`, {
+        const url = new URL('/staff/get_all_blocks', API_BASE_URL);
+        const apiRes = await fetch(url.toString(), {
             method: 'GET'
         });
         const response = await apiRes;

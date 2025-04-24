@@ -5,6 +5,7 @@ function parseDiplomas(data) {
         { key: '_id', label: 'Block ID' },
         { key: 'diploma_type', label: 'Diploma Type' },
         { key: 'authors', label: 'Authors' },
+        { key: 'authors_id', label: 'Authors IDs' },
         { key: 'title', label: 'Title' },
         { key: 'language', label: 'Language' },
         { key: 'discipline', label: 'Discipline' },

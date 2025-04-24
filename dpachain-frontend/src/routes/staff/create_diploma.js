@@ -3,6 +3,7 @@ const { URL } = require('url');
 const { Blob } = require('buffer');
 const multer = require('multer');
 const parseDiploma = require('../../utils/parseDiploma');
+const { API_BASE_URL } = require('../../config');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -23,11 +24,12 @@ router.post('/create_diploma', upload.single('pdf_file'), async (req, res) => {
     faculty,
     additional_info,
     authors,
+    authors_id,
     supervisor,
     reviewer
   } = req.body;
 
-  const form = { diploma_type, title, language, discipline, is_defended, date_of_defense, university, faculty, additional_info, authors, supervisor, reviewer };
+  const form = { diploma_type, title, language, discipline, is_defended, date_of_defense, university, faculty, additional_info, authors, authors_id, supervisor, reviewer };
 
   if (!req.file) {
     return res.render('staff/create_diploma', {
@@ -39,8 +41,7 @@ router.post('/create_diploma', upload.single('pdf_file'), async (req, res) => {
   }
 
   try {
-    const baseUrl = 'http://localhost:8000/staff/generate_new_block';
-    const url = new URL(baseUrl);
+    const url = new URL('/staff/create_diploma', API_BASE_URL);
     ['diploma_type', 'title', 'language', 'discipline', 'is_defended', 'date_of_defense', 'university', 'faculty']
       .forEach(key => {
         if (req.body[key] != null) {
@@ -55,6 +56,7 @@ router.post('/create_diploma', upload.single('pdf_file'), async (req, res) => {
     const pdfBlob = new Blob([req.file.buffer], { type: req.file.mimetype });
     formData.append('pdf_file', pdfBlob, req.file.originalname);
     (Array.isArray(authors) ? authors : [authors]).forEach(a => formData.append('authors', a));
+    (Array.isArray(authors_id) ? authors_id : [authors_id]).forEach(a => formData.append('authors_id', a));
     (Array.isArray(supervisor) ? supervisor : [supervisor]).forEach(s => formData.append('supervisor', s));
     (Array.isArray(reviewer) ? reviewer : [reviewer]).forEach(r => formData.append('reviewer', r));
 

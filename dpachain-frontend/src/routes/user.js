@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const parseDiploma = require('../utils/parseDiploma');
+const { API_BASE_URL } = require('../config');
 
 router.get('/', (req, res) => {
   res.render('user/index', { title: 'User Section' });
@@ -14,7 +15,9 @@ router.get('/validate_diploma', async (req, res) => {
   }
 
   try {
-    const apiRes = await fetch(`http://localhost:8000/user/get_block_by_hash?block_hash=${encodeURIComponent(block_hash)}`);
+    const apiRes = await fetch(`${API_BASE_URL}/user/get_block_by_hash?block_hash=${encodeURIComponent(block_hash)}`, {
+      method: 'GET'
+    });
     const data = await apiRes.json();
 
     if (!apiRes.ok) {

@@ -1,5 +1,6 @@
 const express = require('express');
 const { URL } = require('url');
+const { API_BASE_URL } = require('../../config');
 
 const router = express.Router();
 
@@ -21,7 +22,7 @@ router.post('/add_new_peer', async (req, res) => {
   }
 
   try {
-    const url = new URL('http://localhost:8000/admin/add_new_peer');
+    const url = new URL('/admin/add_new_peer', API_BASE_URL);
     url.searchParams.append('nickname', nickname);
     if (address) url.searchParams.append('adress', address);
 

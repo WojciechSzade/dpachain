@@ -53,6 +53,11 @@
               value="<%= Array.isArray(form.authors) ? form.authors.join(',') : form.authors || '' %>">
           </div>
           <div class="col-md-4">
+            <label class="form-label">Authors IDs*</label>
+            <input type="text" name="authors_id" class="form-control" required placeholder="Comma-separated"
+              value="<%= Array.isArray(form.authors_id) ? form.authors_id.join(',') : form.authors_id || '' %>">
+          </div>
+          <div class="col-md-4">
             <label class="form-label">Supervisor*</label>
             <input type="text" name="supervisor" class="form-control" required placeholder="Comma-separated"
               value="<%= Array.isArray(form.supervisor) ? form.supervisor.join(',') : form.supervisor || '' %>">
