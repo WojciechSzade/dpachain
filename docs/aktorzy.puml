@@ -1,0 +1,8 @@
+@startuml
+
+:Klient:
+:Pracownik:
+:Administrator:
+:Właściciel:
+
+@enduml

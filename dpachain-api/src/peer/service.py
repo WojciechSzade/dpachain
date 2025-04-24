@@ -6,8 +6,8 @@ class PeerService:
     def __init__(self, peer_manager: PeersManager):
         self.peer_manager = peer_manager
 
-    def add_new_peer(self, nickname, adress, is_authorized, public_key=None):
-        self.peer_manager.add_new_peer(
+    def add_new_peer(self, nickname, adress, is_authorized, public_key):
+        return "Peer has been added", self.peer_manager.add_new_peer(
             nickname, adress, is_authorized, public_key)
 
     def get_peers_list(self):

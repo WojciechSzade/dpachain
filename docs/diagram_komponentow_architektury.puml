@@ -4,24 +4,41 @@ skin rose
 database "MongoDB" {
 component [Blockchain Database] as DB
 }
-component [Data Access] as DA
-component [Blockchain Manager] as BM
-component [Administrative Acess] as AA
+package "Backend"{
+component [Blockchain service] as BM
+component [API]
+component [Node service] as NM
+component [Peer service] as PM
+component [Block service] as BS
+}
 cloud {
 component [Other users in network] as users
 }
 
+package "Frontend" {
+component [Frontend server] as FS
+}
 
-interface IReadonlyAccess
-interface IFullacess
 
-DB -- IReadonlyAccess
-DB -- IFullacess
+interface IDatabaseConnection
+interface IAPIConnection
 
-DA --( IReadonlyAccess
-BM --( IFullacess
+DB -- IDatabase
 
-BM <.up.> users : P2P connection
-AA -up-> BM
+BM --( IDatabase
+BM -- IDatabaseConnection
+BS --( IDatabaseConnection
+PM --( IDatabaseConnection
+
+NM <.up.> users : P2P connection
+
+API -> BM
+BM <-> BS
+BM <-> NM
+BM <-> PM
+
+API --( IAPIConnection
+FS -- IAPIConnection
+
 
 @enduml

@@ -55,9 +55,11 @@ class PeersManager:
         return [peer.nickname for peer in peers if peer.status == PeerStatus.ACTIVE or peer.status == PeerStatus.OWN]
 
     def add_new_peer(self, nickname, adress=None, is_authorized=False, public_key=None, status=PeerStatus.UNKNOWN):
-        new_peer = Peer(nickname, adress, status, is_authorized, public_key)
+        if public_key is None:
+            raise NoPublicKeyForPeerError(nickname)
         if self._get_peer_by_nickname(nickname) is not None:
             raise PeerAlreadyExistsError(nickname)
+        new_peer = Peer(nickname, adress, status, is_authorized, public_key)
         self.peers.update_one(
             {"nickname": nickname},
             {"$set": new_peer.dict},
@@ -105,6 +107,9 @@ class PeersManager:
 
     def get_own_peer_adress(self):
         return self.own_peer.adress
+
+    def get_own_peer_public_key(self):
+        return self.public_key
 
     def get_authorized_peers(self):
         return [peer for peer in self.get_peers_list() if peer.is_authorized]

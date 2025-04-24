@@ -49,7 +49,7 @@ class Settings(BaseSettings):
         if self.SIGNING_KEY_NAME is None:
             warnings.error("No signing key name provided")
             raise Exception("No signing key name provided")
-        with open("signing_keys/" + self.SIGNING_KEY_NAME, "rb") as private_key_file:
+        with open("signing_keys/" + self.SIGNING_KEY_NAME, "r") as private_key_file:
             return private_key_file.read()
         
     @computed_field
@@ -58,7 +58,7 @@ class Settings(BaseSettings):
         if self.SIGNING_KEY_NAME is None:
             warnings.error("No signing key name provided")
             raise Exception("No signing key name provided")
-        with open("signing_keys/" + self.SIGNING_KEY_NAME + ".pub", "rb") as public_key_file:
+        with open("signing_keys/" + self.SIGNING_KEY_NAME + ".pub", "r") as public_key_file:
             return public_key_file.read()
 
 

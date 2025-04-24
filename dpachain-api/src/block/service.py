@@ -26,8 +26,8 @@ class BlockService:
         self.block_manager.generate_genesis_block()
         return "Genesis block has been created"
 
-    def create_new_block(self, diploma_type, pdf_hash, authors, title, language, discipline, is_defended, date_of_defense, university, faculty, supervisor, reviewer, additional_info=None):
-        return self.block_manager.create_new_block(diploma_type, pdf_hash, authors, title, language, discipline, is_defended, date_of_defense, university, faculty, supervisor, reviewer, additional_info)
+    def create_new_block(self, diploma_type, pdf_hash, authors, authors_id, title, language, discipline, is_defended, date_of_defense, university, faculty, supervisor, reviewer, additional_info=None):
+        return self.block_manager.create_new_block(diploma_type, pdf_hash, authors, authors_id, title, language, discipline, is_defended, date_of_defense, university, faculty, supervisor, reviewer, additional_info)
 
     def calculate_pdf_hash(self, pdf_file):
         try:

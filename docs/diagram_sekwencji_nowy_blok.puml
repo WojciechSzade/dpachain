@@ -4,10 +4,12 @@ autoactivate on
 
 actor "Admin user" as User
 boundary "Admin panel" as GUI
-control "Administrative API" as API
+control "API" as API
 database MongoDB
-entity "Blockchain Manager" as BM
-entity "P2P Node" as P2P
+entity "Blockchain service" as BM
+entity "Block service" as BS
+entity "Peer service" as PS
+entity "Node service" as P2P
 entity "Node" as RN
 entity "Other nodes" as ON
 
@@ -18,34 +20,40 @@ loop until_block_is_in_chain
   BM -> P2P: sync_blockchain()
   ... blockchain_syncing ...
   return blockchain_synced
-  BM -> BM: prepare_new_block(detailed_information)
+  BM -> BS: prepare_new_block(detailed_information)
+  BS -> BS: prepare_new_block(detailed_information)
   return new_block
-  BM -> BM: sign_new_block(own_signature)
+  BS -> BS: sign_new_block(new_block, own_key)
   return signed_new_block
+  return signed_new_block
+  
   BM -> MongoDB: add_block(signed_new_block)
   return block_saved_msg
-  BM -> P2P: share_new_block(nodes_list.txt)
-  P2P -> ON: connect_to_all_nodes_and_ask_for_chain_size(nodes_list.txt)
+  BM -> P2P: share_new_block(peers_list)
+  P2P -> PS: get_active_peers()
+  return peers_list
+  P2P -> ON: connect_to_all_peers_and_ask_for_chain_size(peers_list)
   return (connection_to_nodes, chain_size)
-  P2P -> P2P: create_list_of_nodes_sorted_by_best(connection_to_nodes, chain_size, nodes_list.txt)
-  return nodes_list
-  loop foreach node in nodes_list
-    P2P -> RN ** : connect_to_node(node)
+  P2P -> P2P: create_list_of_peers_sorted_by_best(connection_to_peers, chain_size)
+  return best_peers_list
+  loop foreach peer in best_peers_list
+    P2P -> RN ** : connect_to_peer(peer)
     activate RN
-    return connection_to_node
+    return connection_to_peer
     P2P ->> RN: ask_to_sync(blockchain_size)
     deactivate RN
     destroy RN
   end
   loop 10 times
-    P2P -> ON: connect_to_all_nodes_and_ask_for_chain_size()
-    return (connection_to_nodes, chain_size)
-    P2P -> P2P: select_best_node(connections_to_nodes, chain_size, nodes_list.txt)
-    return node_ip
-    alt best_node_blockchain_size >= own_chain_size
-      P2P -> RN ** : connect_to_node(node_ip)
+    P2P -> ON: connect_to_all_peers_and_ask_for_chain_size()
+    return (connection_to_peers, chain_size)
+    P2P -> P2P: create_list_of_peers_sorted_by_best(connections_to_peers, chain_size, peers_list.txt)
+    return best_peers_list
+    alt best_peer_blockchain_size >= own_chain_size
+    loop foreach peer in best_peers_list
+      P2P -> RN ** : connect_to_peer(best_peers_list)
       activate RN
-      return connection_to_node
+      return connection_to_peer
       P2P -> RN : ask_for_specific_block(own_chain_size)
       return block
       P2P -> BM: compare_block_with_new_block(block)
@@ -66,7 +74,8 @@ loop until_block_is_in_chain
       P2P -[hidden]> BM
       return false
       destroy RN
-    else best_node_blockchain_size < own_chain_size
+    else best_peer_blockchain_size < own_chain_size
+      end
       ... wait 30s ...
     end
   end

@@ -2,23 +2,27 @@
 skin rose
 
 class Block {
-  +str previous_hash               
+  +str previous_block     
+  +int _id                 
   +float timestamp                 
-  +int position_id                 
   +str diploma_type                
-  +List[str] authors               
-  +str title                       
-  +str language                    
-  +str awarding_institution        
-  +str university_name             
-  +str academic_discipline         
-  +int is_defended                
-  +datetime defense_date           
-  +List[str] supervisors           
-  +List[str] reviewers             
   +str pdf_hash                    
-  +dict additional_info            
+  +List[str] authors               
+  +List[str] authors_id       
+  +datetime date_of_defense
+  +str title                       
+  +str language            
+  +str discipline
+  +int is_defended                
+  +str university
+  +str faculty
+  +List[str] supervisors
+  +List[str] reviewers           
+  +dict additional_info         
+  +str: peer_author
   +str chain_version               
+  +str: hash
+  +str: signed_hash
   --
   +calculate_merkle_root(data: list) : str
   +{static} calculate_pdf_hash(pdf_file: bytes) : str

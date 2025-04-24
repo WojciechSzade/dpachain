@@ -25,15 +25,17 @@ router = APIRouter()
 @router.post("/admin/add_new_authorized_peer")
 def add_new_authorized_peer(nickname: str, public_key: str, adress: str = None, peer_service: PeerService = Depends(get_peer_service)):
     try:
-        return {"message": peer_service.add_new_peer(nickname, adress, True, public_key)}
+        res = peer_service.add_new_peer(nickname, adress, True, public_key)
+        return {"message": res[0], "peer": res[1]}
     except PeerError as e:
         return handle_error(e)
 
 
 @router.post("/admin/add_new_peer")
-def add_new_authorized_peer(nickname: str, adress: str = None, peer_service: PeerService = Depends(get_peer_service)):
+def add_new_peer(nickname: str, public_key: str, adress: str = None, peer_service: PeerService = Depends(get_peer_service)):
     try:
-        return {"message": peer_service.add_new_peer(nickname, adress, False)}
+        res = peer_service.add_new_peer(nickname, adress, False, public_key)
+        return {"message": res[0], "peer": res[1]}
     except PeerError as e:
         return handle_error(e)
 

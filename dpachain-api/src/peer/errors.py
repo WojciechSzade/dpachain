@@ -44,7 +44,17 @@ class OwnPeerAlreadyExistsError(PeerError):
 
 class ForbiddenOperationForOwnPeerError(PeerError):
     """Raised when you try to perform a forbidden operation for own peer."""
-    
+
     def __init__(self, operation):
         self.operation = operation
-        super().init(f"Cannot perform {operation} on own peer.")
+        super().__init__(f"Cannot perform {operation} on own peer.")
+
+
+class NoPublicKeyForPeerError(PeerError):
+    """Raised when you try to add a peer without passing a public key."""
+
+    def __init__(self, peer_nickname):
+        self.peer_nickname = peer_nickname
+        super().__init__(
+            f"Cannot add a peer {self.peer_nickname} without public key.")
+

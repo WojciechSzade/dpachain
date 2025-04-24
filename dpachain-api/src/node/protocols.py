@@ -1,6 +1,10 @@
 from functools import wraps
 import logging
 import json
+from Cryptodome.PublicKey import RSA
+from Cryptodome.Signature import PKCS1_v1_5
+from Cryptodome.Hash import SHA256
+import base64
 
 from src.block.manager import BlockManager
 from src.block.models import Block
@@ -26,27 +30,34 @@ class ProtocolManager:
 
     @staticmethod
     def parse_message(msg):
-        if msg is None or msg[:8] != b"DPACHAIN":
-            return
-        msg = msg[8:]
         try:
-            msg = json.loads(msg.decode('utf-8'))
-        except json.JSONDecodeError as base:
+            if msg is None or not msg.startswith(b"DPACHAIN"):
+                logger.error(f"Invalid message received {msg}")
+                return
+            msg = msg[len(b"DPACHAIN"):]
+            try:
+                msg = json.loads(msg.decode('utf-8'))
+            except json.JSONDecodeError as base:
+                e = InvalidMessageReceivedError(msg)
+                logger.error(e)
+                raise e from base
+
+            protocol = msg.get("protocol")
+            author = msg.get("author")
+            signature = msg.pop("signature", None)
+            payload = msg.get("payload")
+
+            if not protocol or not author:
+                e = InvalidMessageReceivedError(msg)
+                logger.error(e)
+                raise e
+            logger.info(
+                f"RECEIVED MESSAGE: protocol: {protocol}, author: {author}, payload: {payload}")
+            return msg, protocol, author, payload, signature
+        except Exception as base:
             e = InvalidMessageReceivedError(msg)
             logger.error(e)
             raise e from base
-
-        protocol = msg.get("protocol")
-        author = msg.get("author")
-        payload = msg.get("payload")
-
-        if not protocol or not author:
-            e = InvalidMessageReceivedError(msg)
-            logger.error(e)
-            raise e
-        logger.info(
-            f"RECEIVED MESSAGE: protocol: {protocol}, author: {author}, payload: {payload}")
-        return protocol, author, payload
 
     def get_author_peer(self, author, protocol) -> Peer:
         author_peer = self.peers_manager._get_peer_by_nickname(author)
@@ -63,12 +74,24 @@ class ProtocolManager:
                 author_peer, PeerStatus.ACTIVE)
         return author_peer
 
+    def verify_signature(self, raw_data, public_key, signature):
+        canon = json.dumps(raw_data, separators=(',', ':'), sort_keys=True)
+        hobj = SHA256.new(canon.encode('utf-8'))
+        public_key = RSA.import_key(public_key)
+        verifier = PKCS1_v1_5.new(public_key)
+        return verifier.verify(hobj, base64.b64decode(signature))
+
     async def add_peer_protocole_support(self, msg, client_tup, pipe):
-        parse = self.parse_message(msg)
-        if parse is None:
+        parsed = self.parse_message(msg)
+        if parsed is None:
             return
-        protocol, author, payload = parse
+        raw_data, protocol, author, payload, signature = parsed
         author_peer = self.get_author_peer(author, protocol)
+        signed_correct = self.verify_signature(
+            raw_data, author_peer.public_key, signature) if signature else False
+        if not signed_correct and protocol != 'new_peer':
+            raise InvalidSignatureError(author_peer.nickname)
+
         match protocol:
             case 'ask_chain_size':
                 logger.info(
@@ -118,10 +141,22 @@ class ProtocolManager:
         logger.error(str(e))
         raise e
 
+    def sign_message(self, serialized_msg: str) -> str:
+        """Sign a pre-serialized (canonical) JSON string."""
+        hash_obj = SHA256.new(serialized_msg.encode('utf-8'))
+        signature = PKCS1_v1_5.new(
+            self.block_manager.signing_private_key).sign(hash_obj)
+        return base64.b64encode(signature).decode()
+
     async def send_message(self, pipe, msg, wait_response=False):
         """Send message to peer"""
-        _protocol = msg["protocol"]
+        protocol = msg["protocol"]
+
+        canon = json.dumps(msg, separators=(',', ':'), sort_keys=True)
+        msg["signature"] = self.sign_message(
+            canon) if protocol != 'new_peer' else None
         msg = json.dumps(msg).encode('utf-8')
+
         logger.info(f"SEND_MESSAGE {msg}")
         msg = b"DPACHAIN" + msg
         await pipe.send(msg)
@@ -130,11 +165,20 @@ class ProtocolManager:
             if res is None:
                 logger.info(
                     f"Awaiting timedout.")
-                e = NoResponseReceivedError(pipe, _protocol)
+                e = NoResponseReceivedError(pipe, protocol)
                 raise e
             response = {}
-            response["protocol"], response["author"], response["payload"] = self.parse_message(
+            raw_data, response["protocol"], response["author"], response["payload"], response["signature"] = self.parse_message(
                 res)
+            author_peer = self.get_author_peer(
+                response["author"], response["protocol"])
+            signed_correct = self.verify_signature(
+                raw_data, author_peer.public_key, response["signature"]) if response["signature"] else False
+            if not signed_correct:
+                e = InvalidSignatureError(author_peer.nickname)
+                logger.error(str(e))
+                raise e
+
             return response["protocol"], response["author"], response["payload"]
 
     async def request_chain_size(self, pipe):
@@ -251,6 +295,7 @@ class ProtocolManager:
             "payload": {
                 "nickname": self.peers_manager.get_own_peer_name(),
                 "adress": self.peers_manager.get_own_peer_adress(),
+                "public_key": self.peers_manager.get_own_peer_public_key()
             }
         }
         await self.send_message(pipe, msg)
@@ -260,13 +305,14 @@ class ProtocolManager:
     async def handle_new_peer(self, pipe, payload):
         """Handle new peer request"""
         new_peer_nickname = payload.get("nickname")
+        new_peer_public_key = payload.get("public_key")
         new_peer_adress = payload.get("adress")
-        if new_peer_nickname is None:
+        if new_peer_nickname is None or new_peer_public_key is None:
             e = InvalidMessageReceivedError(payload)
             logger.error(str(e))
             return
         self.peers_manager.add_new_peer(
-            new_peer_nickname, new_peer_adress)
+            new_peer_nickname, new_peer_adress, False, new_peer_public_key)
         await pipe.close()
         return
 

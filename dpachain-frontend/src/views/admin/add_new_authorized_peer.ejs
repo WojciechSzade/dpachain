@@ -1,27 +1,32 @@
 <div class="container mt-4">
-    <h2>Add New Authorized Peer</h2>
-  
-    <% if (error) { %>
-      <div class="alert alert-danger"><%= error.msg %></div>
+  <h2>Add New Authorized Peer</h2>
+
+  <% if (error) { %>
+    <div class="alert alert-danger">
+      <%= error.msg %>
+    </div>
     <% } %>
-    <% if (message) { %>
-      <div class="alert alert-success">Response: <%= message %></div>
-    <% } %>
-  
-    <form method="POST" action="/admin/add_new_authorized_peer">
-      <div class="mb-3">
-        <label for="nickname" class="form-label">Nickname*</label>
-        <input type="text" class="form-control" id="nickname" name="nickname" required value="<%= form.nickname || '' %>">
-      </div>
-      <div class="mb-3">
-        <label for="public_key" class="form-label">Public Key*</label>
-        <input type="text" class="form-control" id="public_key" name="public_key" required value="<%= form.public_key || '' %>">
-      </div>
-      <div class="mb-3">
-        <label for="address" class="form-label">Address</label>
-        <input type="text" class="form-control" id="address" name="address" value="<%= form.address || '' %>">
-      </div>
-      <button type="submit" class="btn btn-primary">Add Peer</button>
-    </form>
-    <a href="/admin" class="btn btn-secondary mt-3">Back to Admin Home</a>
-  </div>
+      <% if (message) { %>
+        <div class="alert alert-success">Response: <%= message %>
+        </div>
+        <% } %>
+
+          <form method="POST" action="/admin/add_new_authorized_peer">
+            <div class="mb-3">
+              <label for="nickname" class="form-label">Nickname*</label>
+              <input type="text" class="form-control" id="nickname" name="nickname" required
+                value="<%= form.nickname || '' %>">
+            </div>
+            <div class="mb-3">
+              <label for="public_key" class="form-label">Public Key*</label>
+              <input type="text" class="form-control" id="public_key" name="public_key" required
+                value="<%= form.public_key || '' %>">
+            </div>
+            <div class="mb-3">
+              <label for="address" class="form-label">Address</label>
+              <input type="text" class="form-control" id="address" name="address" value="<%= form.address || '' %>">
+            </div>
+            <button type="submit" class="btn btn-primary">Add Peer</button>
+          </form>
+          <a href="/admin" class="btn btn-secondary mt-3">Back to Admin Home</a>
+</div>

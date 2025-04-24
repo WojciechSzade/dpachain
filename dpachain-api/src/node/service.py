@@ -24,8 +24,8 @@ class NodeService:
     async def ask_peer_to_sync(self, nickname):
         return await self.node_manager.ask_peer_to_sync(nickname)
 
-    async def generate_new_block(self, diploma_type: str, pdf_file: str, authors: (list[str] | str), title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), additional_info: (str | None) = None):
-        return "Block has been added", await self.node_manager.generate_new_block(diploma_type, pdf_file, authors,
+    async def generate_new_block(self, diploma_type: str, pdf_file: str, authors: (list[str] | str), authors_id: (list[str] | str), title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), additional_info: (str | None) = None):
+        return "Block has been added", await self.node_manager.generate_new_block(diploma_type, pdf_file, authors, authors_id,
                                                                                   title, language, discipline, is_defended, date_of_defense,
                                                                                   university, faculty, supervisor, reviewer,
                                                                                   additional_info=None)

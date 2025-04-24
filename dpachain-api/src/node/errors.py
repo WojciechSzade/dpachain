@@ -49,4 +49,11 @@ class InvalidMessageAuthorError(NodeError):
     def __init__(self, author, reason, protocol):
         super().__init__(
             f"Message's author '{author}' invalid, reason: {reason}. Protocol was: {protocol}.")
-        
+
+
+class InvalidSignatureError(NodeError):
+    """Raised when the signature is invalid."""
+
+    def __init__(self, peer_nickname):
+        self.peer_nickname = peer_nickname
+        super().__init__(f"Invalid signature from peer {self.peer_nickname}.")

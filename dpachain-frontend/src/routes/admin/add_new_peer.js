@@ -9,10 +9,10 @@ router.get('/add_new_peer', (req, res) => {
 });
 
 router.post('/add_new_peer', async (req, res) => {
-  const { nickname, address } = req.body;
-  const form = { nickname, address };
+  const { nickname, public_key, address } = req.body;
+  const form = { nickname, public_key, address };
 
-  if (!nickname) {
+  if (!nickname || !public_key) {
     return res.render('admin/add_new_peer', {
       title: 'Add New Peer',
       error: { msg: 'Nickname is required.' },
@@ -24,6 +24,7 @@ router.post('/add_new_peer', async (req, res) => {
   try {
     const url = new URL('/admin/add_new_peer', API_BASE_URL);
     url.searchParams.append('nickname', nickname);
+    url.searchParams.append('public_key', public_key);
     if (address) url.searchParams.append('adress', address);
 
     const apiRes = await fetch(url.toString(), { method: 'POST' });

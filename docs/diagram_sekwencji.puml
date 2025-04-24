@@ -4,10 +4,11 @@ autoactivate on
 
 actor "Admin user" as User
 boundary "Admin panel" as GUI
-control "Private node API" as API
 database MongoDB
-entity Service
-entity "P2P Node" as P2P
+entity "Blockchain service" as Service
+entity "Block service" as BS
+entity "Peer service" as PS
+entity "Node service" as P2P
 entity "Node" as RN
 entity "Other nodes" as ON
 
@@ -15,9 +16,12 @@ User -> Service ** : start()
 activate Service
 Service -> MongoDB : connection_to_db()
 return database_connection
-Service -> API ** : start()
-activate API
-return api
+Service -> PS ** : start()
+activate PS
+return peer_service
+Service -> BS ** : start()
+activate BS
+return block_service
 Service -> P2P ** : start()
 activate P2P
 P2P -> P2P:start_and_open_for_connections()
@@ -29,27 +33,29 @@ end
 return node
 Service -> P2P: sync_blockchain()
 loop until_chain_is_synced
-  P2P -> ON : connect_to_all_nodes_and_ask_for_chain_size(nodes_list.txt)
+  P2P -> PS : get_actives_peers()
+  return peers_list
+  P2P -> ON : connect_to_all_nodes_and_ask_for_chain_size(peers_list)
   return (connections_to_nodes, chain_size)
-  P2P -> P2P: select_best_node()
+  P2P -> PS: select_best_node()
   return node_ip
   P2P -> RN ** : connect_to_node()
   activate RN
   return connection_to_node
-  P2P -> RN : sync_nodes_list(nodes_list_hash)
-  return nodes_list.txt
   P2P -> RN : compare_blockchain(own_length, own_last_hash)
   return (lenght, last_hash)
   loop foreach missing block
     P2P -> RN: ask_for_block(index)
     return block
-    P2P -> Service: validate_block(block)
-    Service -> Service: validate_block_with_authenticated_users_keys(block)
+    P2P -> BS: validate_block(block)
+    BS -> PS: get_authenticated_peers_keys()
+    return authenticated_peers_keys
+    BS -> BS: validate_block(block, authenticated_peers_keys)
     return is_valid
     alt#Gold  #LightBlue block is valid
-      Service -> MongoDB: add_block(block)
+      BS -> MongoDB: add_block(block)
       return block_saved_msg
-      P2P -[hidden]> Service
+      P2P -[hidden]> BS
       return continue
     else #Pink
       Service -> Service: mark_node_as_unsafe(Node)
@@ -58,7 +64,8 @@ loop until_chain_is_synced
     end
   end
   destroy RN
-  return block_is_synced
+  return chain_is_synced
 end
 return service_ready
+
 @enduml

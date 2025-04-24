@@ -50,6 +50,7 @@ class BlockManager:
             "0",
             "0",
             "0",
+            "0",
             "Genesis block - not a real diploma!",
             "0",
             "0",
@@ -67,7 +68,7 @@ class BlockManager:
         self.blocks.insert_one(block.dict)
 
     @require_authorized
-    def create_new_block(self, diploma_type: str, pdf_file: str, authors: (list[str] | str), title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), additional_info: (str | None) = None):
+    def create_new_block(self, diploma_type: str, pdf_file: str, authors: (list[str] | str), authors_id: (list[str] | str), title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), additional_info: (str | None) = None):
         last_block = self.get_latest_block()
         if last_block is None:
             raise BlockNotFoundError(
@@ -82,6 +83,7 @@ class BlockManager:
             diploma_type,
             pdf_hash,
             authors,
+            authors_id,
             title,
             language,
             discipline,
@@ -160,7 +162,7 @@ class BlockManager:
             raise UnauthorizedBlockError(
                 block, "Could not validate block, because author peer does not exist"
             )
-        if block.hash != Block.calculate_merkle_root([previous_block.hash if previous_block else None, block._id, block.timestamp, block.diploma_type, block.pdf_hash, block.authors, block.date_of_defense, block.title, block.language, block.discipline, block.is_defended, block.university, block.faculty, block.supervisor, block.reviewer, block.additional_info, block.peer_author, block.chain_version]):
+        if block.hash != Block.calculate_merkle_root([previous_block.hash if previous_block else None, block._id, block.timestamp, block.diploma_type, block.pdf_hash, block.authors, block.authors_id, block.date_of_defense, block.title, block.language, block.discipline, block.is_defended, block.university, block.faculty, block.supervisor, block.reviewer, block.additional_info, block.peer_author, block.chain_version]):
             raise UnauthorizedBlockError(
                 block, "Could not validate block, because hash does not match - calculated hash does not match"
             )
