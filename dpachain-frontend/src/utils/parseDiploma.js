@@ -1,7 +1,3 @@
-/**
- * Parses a diploma (block) object and returns an array of fields in the desired order.
- * Adjust the `order` array below to change which fields appear and in what order.
- */
 function parseDiploma(block) {
     const order = [
         { key: '_id', label: 'Block ID' },

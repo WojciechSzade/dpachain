@@ -3,12 +3,10 @@ const { URL } = require('url');
 
 const router = express.Router();
 
-// GET: display form to add a new authorized peer
 router.get('/add_new_authorized_peer', (req, res) => {
   res.render('admin/add_new_authorized_peer', { title: 'Add New Authorized Peer', error: null, message: null, form: {} });
 });
 
-// POST: handle form submission
 router.post('/add_new_authorized_peer', async (req, res) => {
   const { nickname, public_key, address } = req.body;
   const form = { nickname, public_key, address };

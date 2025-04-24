@@ -2,7 +2,6 @@ const express = require('express');
 
 const router = express.Router();
 
-// GET: Sync Chain page
 router.get('/sync_chain', (req, res) => {
   res.render('admin/sync_chain', {
     title: 'Sync Chain',
@@ -11,7 +10,6 @@ router.get('/sync_chain', (req, res) => {
   });
 });
 
-// POST: Perform sync
 router.post('/sync_chain', async (req, res) => {
   try {
     const apiRes = await fetch('http://localhost:8000/admin/sync_chain', {

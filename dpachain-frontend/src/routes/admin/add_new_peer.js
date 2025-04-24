@@ -3,12 +3,10 @@ const { URL } = require('url');
 
 const router = express.Router();
 
-// GET: display form to add a new peer
 router.get('/add_new_peer', (req, res) => {
   res.render('admin/add_new_peer', { title: 'Add New Peer', error: null, message: null, form: {} });
 });
 
-// POST: handle form submission
 router.post('/add_new_peer', async (req, res) => {
   const { nickname, address } = req.body;
   const form = { nickname, address };

@@ -5,6 +5,7 @@ const addNewPeer = require('./add_new_peer');
 const addNewAuthorizedPeer = require('./add_new_authorized_peer');
 const getPeersList = require('./get_peers_list');
 const syncChain = require('./sync_chain');
+const dropAllBlocks = require('./drop_all')
 
 router.get('/', (req, res) => {
     res.render('admin/index', { title: 'Admin section' });
@@ -14,5 +15,6 @@ router.use('/', addNewPeer);
 router.use('/', addNewAuthorizedPeer);
 router.use('/', getPeersList);
 router.use('/', syncChain)
+router.use('/', dropAllBlocks)
 
 module.exports = router;
