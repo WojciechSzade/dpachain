@@ -62,3 +62,15 @@ services:
       - MONGO_URI=mongodb://user:password@dpachain-db2:27017/
     image: dpachain-api
     restart: unless-stopped
+
+  dpachain-frontend:
+    container_name: dpachain-frontend
+    build:
+      context: ./dpachain-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+    depends_on:
+      - dpachain-api
+    restart: unless-stopped
