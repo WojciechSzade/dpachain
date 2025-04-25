@@ -1,8 +1,11 @@
 @startuml
 
-:Klient:
+:Student:
+:Pracodawca:
+package "Uczelnia wyższa" {
 :Pracownik:
 :Administrator:
 :Właściciel:
+}
 
 @enduml

@@ -21,11 +21,6 @@ class IBlockManager(ABC):
         ...
 
     @abstractmethod
-    def set_node_manager(self, node_manager: INodeManager):
-        """Lazy dependency injection."""
-        ...
-
-    @abstractmethod
     def generate_genesis_block(self):
         """
         Creates the genesis block - the first block.

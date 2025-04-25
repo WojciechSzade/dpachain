@@ -1,12 +1,12 @@
-wycofawać się ze słowa klient -> rozbić na dwa; 
-uczestnik -> węzeł
-Podzielić założenia projektu;
-dane osobiste -> dane osobowe;
-nie dozwolone -> wymagane, 
-krok 6 - powołać się na dokument;
-odpowiednia strona -> konkretna;
-Dodać utrzymywanie własnej kopii do zarysu rozwiązania'
-niezauważalny -> inne słowo;
+----- wycofawać się ze słowa klient -> rozbić na dwa; DONE
+----- uczestnik -> węzeł; DONE
+---- Podzielić założenia projektu; DONE
+--- dane osobiste -> dane osobowe; DONE
+---- nie dozwolone -> wymagane, DONE 
+---- krok 6 - powołać się na dokument; przeniesione
+--- odpowiednia strona -> konkretna; DONE
+Dodać utrzymywanie własnej kopii do zarysu rozwiązania
+---- niezauważalny -> inne słowo; DONE
 brakuje wielu funkcjonalności - jakich?
 takie zrozumiałe -> popraw;
 skutkować w problach 
@@ -17,5 +17,5 @@ współpracuje -> nie pracuje równolegle;
 ładunek -> poprawić;
 swojego w protokole;
 instrukcja dla każdego z uczestników;
-
-
+Dodać funkcjonalność sprawdzania hasza pracy dyplomowej.
+Określic założenia prawne dla przetwarzania danych;

@@ -1,0 +1,5 @@
+@startuml
+
+
+:Student: -> (Udowodnienie autentyczności swojej pracy dyplomowej <u>pracodawcy</u>)
+@enduml

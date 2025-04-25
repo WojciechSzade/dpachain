@@ -27,14 +27,10 @@ class BlockManager(IBlockManager):
         self.chain_version = chain_version
         self.authorized = authorized
         self.peer_manager: IPeerManager
-        self.node_manager: INodeManager
         self.signing_private_key = RSA.import_key(signing_private_key)
 
     def set_peer_manager(self, peer_manager: IPeerManager):
         self.peer_manager = peer_manager
-
-    def set_node_manager(self, node_manager: INodeManager):
-        self.node_manager = node_manager
 
     @require_authorized
     def generate_genesis_block(self):

@@ -30,7 +30,6 @@ def configure_dependencies() -> dict[str, Any]:
         nickname=settings.HOST_NODE_NAME, port=settings.P2P_PORT)
 
     block_manager.set_peer_manager(peer_manager=peer_manager)
-    block_manager.set_node_manager(node_manager=node_manager)
     node_manager.set_block_manager(block_manager=block_manager)
     node_manager.set_peer_manager(peer_manager=peer_manager)
 
