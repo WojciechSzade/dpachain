@@ -1,7 +1,7 @@
 import logging
 
 from fastapi import APIRouter, Depends
-from typing import Annotated
+from typing import Annotated, Optional
 import datetime
 from fastapi import File
 
@@ -23,18 +23,18 @@ router = APIRouter()
 
 
 @router.post("/admin/add_new_authorized_peer")
-def add_new_authorized_peer(nickname: str, public_key: str, adress: str = None, peer_service: PeerService = Depends(get_peer_service)):
+def add_new_authorized_peer(nickname: str, public_key: str, adress: Optional[str] = None, peer_service: PeerService = Depends(get_peer_service)):
     try:
-        res = peer_service.add_new_peer(nickname, adress, True, public_key)
+        res = peer_service.add_new_peer(nickname, public_key, adress, True)
         return {"message": res[0], "peer": res[1]}
     except PeerError as e:
         return handle_error(e)
 
 
 @router.post("/admin/add_new_peer")
-def add_new_peer(nickname: str, public_key: str, adress: str = None, peer_service: PeerService = Depends(get_peer_service)):
+def add_new_peer(nickname: str, public_key: str, adress: Optional[str] = None, peer_service: PeerService = Depends(get_peer_service)):
     try:
-        res = peer_service.add_new_peer(nickname, adress, False, public_key)
+        res = peer_service.add_new_peer(nickname, public_key, adress, False)
         return {"message": res[0], "peer": res[1]}
     except PeerError as e:
         return handle_error(e)

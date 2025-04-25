@@ -1,6 +1,7 @@
 import logging
 import hashlib
-from datetime import datetime
+import datetime
+from typing import Any, Callable, Optional
 
 from src.block.errors import *
 
@@ -10,7 +11,14 @@ logger = logging.getLogger(__name__)
 
 
 class Block:
-    def __init__(self, previous_block, _id, timestamp, diploma_type, pdf_hash, authors, authors_id, date_of_defense, title, language, discipline, is_defended, university, faculty, supervisor, reviewer, additional_info, peer_author, chain_version, hash, signed_hash):
+    def __init__(
+            self, previous_block: str, _id: int, timestamp: float,
+            diploma_type: str, pdf_hash: str, authors: (list[str] | str),
+            authors_id: (list[str] | str), date_of_defense: datetime.date,
+            title: str, language: str, discipline: str, is_defended: int,
+            university: str, faculty: str, supervisor: (list[str] | str),
+            reviewer: (list[str] | str), additional_info: Optional[str],
+            peer_author: str, chain_version: str, hash: str, signed_hash: str):
         self.previous_block = previous_block
         self._id = _id
         self.timestamp = timestamp
@@ -34,14 +42,25 @@ class Block:
         self.signed_hash = signed_hash
 
     @classmethod
-    def create_block(cls, previous_block: str, _id: int, diploma_type: str, pdf_hash: str, authors: (list[str] | str), authors_id: (list[str] | str), title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), peer_author: str, chain_version: str, signing_function: callable, additional_info: (str | None) = None):
-        timestamp = datetime.now().timestamp()
-        date_of_defense = datetime.combine(
-            date_of_defense, datetime.min.time())
+    def create_block(
+            cls, previous_block: str, _id: int, diploma_type: str, pdf_hash: str, authors: (list[str] | str),
+            authors_id: (list[str] | str), title: str, language: str, discipline: str, is_defended: int,
+            date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str),
+            reviewer: (list[str] | str), peer_author: str, chain_version: str, signing_function: Callable[[str], str],
+            additional_info: Optional[str] = None):
+        timestamp = datetime.datetime.now().timestamp()
+        date_of_defense = datetime.datetime.combine(
+            date_of_defense, datetime.datetime.min.time())
 
-        hash = cls.calculate_merkle_root([previous_block, _id, timestamp, diploma_type, pdf_hash, authors, authors_id, date_of_defense,
-                                         title, language, discipline, is_defended, university, faculty, supervisor, reviewer, additional_info, peer_author, chain_version])
-        return cls(previous_block, _id, timestamp, diploma_type, pdf_hash, authors, authors_id, date_of_defense, title, language, discipline, is_defended, university, faculty, supervisor, reviewer, additional_info, peer_author, chain_version, hash, signing_function(hash))
+        hash = cls.calculate_merkle_root([previous_block, _id, timestamp, diploma_type, pdf_hash, authors, authors_id,
+                                          date_of_defense, title, language, discipline, is_defended, university, faculty,
+                                          supervisor, reviewer, additional_info, peer_author, chain_version])
+        return cls(
+            previous_block=previous_block, _id=_id, timestamp=timestamp, diploma_type=diploma_type, pdf_hash=pdf_hash,
+            authors=authors, authors_id=authors_id, date_of_defense=date_of_defense, title=title, language=language,
+            discipline=discipline, is_defended=is_defended, university=university, faculty=faculty, supervisor=supervisor,
+            reviewer=reviewer, additional_info=additional_info, peer_author=peer_author, chain_version=chain_version, hash=hash,
+            signed_hash=signing_function(hash))
 
     @staticmethod
     def calculate_merkle_root(data):
@@ -68,8 +87,7 @@ class Block:
     def calculate_pdf_hash(pdf_file):
         return hashlib.sha256(pdf_file).hexdigest()
 
-    @property
-    def dict(self):
+    def as_dict(self):
         return {
             "previous_block": self.previous_block,
             "_id": self._id,
@@ -95,7 +113,7 @@ class Block:
         }
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: dict[str, Any]):
         logger.info(f"Creating class from dict for {data['title']}")
         return cls(
             data['previous_block'],
@@ -105,7 +123,7 @@ class Block:
             data['pdf_hash'],
             data['authors'],
             data['authors_id'],
-            datetime.fromisoformat(data['date_of_defense']),
+            datetime.datetime.fromisoformat(data['date_of_defense']),
             data['title'],
             data['language'],
             data['discipline'],

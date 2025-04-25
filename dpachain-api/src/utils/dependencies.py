@@ -1,25 +1,23 @@
 from fastapi import HTTPException, Request, status
 
-from src.block.service import BlockService
+from src.block.interfaces import IBlockService
+from src.peer.interfaces import IPeerService
+from src.node.interfaces import INodeService
 
 
-def get_blockchain_service(request: Request):
-    return request.app.state.blockchain
-
-
-def get_block_service(request: Request) -> BlockService:
-    try:
-        return request.app.state.blockchain.block_service
-    except:
+def get_block_service(request: Request) -> IBlockService:
+    if request.app.state.service_started:
+        return request.app.state.block_service
+    else:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Block service was not started yet",
         )
 
 
-def get_peer_service(request: Request):
+def get_peer_service(request: Request) -> IPeerService:
     try:
-        return request.app.state.blockchain.peer_service
+        return request.app.state.peer_service
     except:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -27,9 +25,9 @@ def get_peer_service(request: Request):
         )
 
 
-def get_node_service(request: Request):
+def get_node_service(request: Request) -> INodeService:
     try:
-        return request.app.state.blockchain.node_service
+        return request.app.state.node_service
     except:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

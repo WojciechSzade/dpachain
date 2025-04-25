@@ -23,12 +23,18 @@ router = APIRouter()
 
 
 @router.post("/staff/generate_new_block")
-async def generate_next_block(diploma_type: str, pdf_file: Annotated[bytes, File()], authors: (list[str] | str), authors_id: (list[str] | str),  title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), additional_info: (str | None) = None, node_service: NodeService = Depends(get_node_service)):
+async def generate_next_block(
+        diploma_type: str, pdf_file: Annotated[bytes, File()], authors: (list[str] | str),
+        authors_id: (list[str] | str),  title: str, language: str, discipline: str,
+        is_defended: int, date_of_defense: datetime.date, university: str, faculty: str,
+        supervisor: (list[str] | str), reviewer: (list[str] | str),
+        additional_info: (str | None) = None, node_service: NodeService = Depends(get_node_service)):
     try:
-        res = await node_service.generate_new_block(diploma_type, pdf_file, authors, authors_id,
-                                                    title, language, discipline, is_defended, date_of_defense,
-                                                    university, faculty, supervisor, reviewer,
-                                                    additional_info=None)
+        res = await node_service.generate_new_block(
+            diploma_type=diploma_type, pdf_file=pdf_file, authors=authors, authors_id=authors_id,
+            title=title, language=language, discipline=discipline, is_defended=is_defended,
+            date_of_defense=date_of_defense, university=university, faculty=faculty, supervisor=supervisor,
+            reviewer=reviewer, additional_info=None)
         return {"message": res[0], "block": res[1]}
     except (PeerError, NodeError, BlockError) as e:
         return handle_error(e)

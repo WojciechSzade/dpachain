@@ -16,7 +16,11 @@ python-multipart = "^0.0.19"
 p2pd = "^3.1.0"
 netifaces = "^0.11.0"
 pycryptodomex = "^3.21.0"
+mypy = "^1.15.0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.mypy]
+plugins = ['pydantic.mypy']

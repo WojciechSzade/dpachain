@@ -58,3 +58,9 @@ class NoPublicKeyForPeerError(PeerError):
         super().__init__(
             f"Cannot add a peer {self.peer_nickname} without public key.")
 
+
+class OwnPeerWasNotSetError(PeerError):
+    """Raise when own peer is accessed, but has not been set yet."""
+
+    def __init__(self):
+        super().__init__("Cannot access own peer - it has not been set yet.")

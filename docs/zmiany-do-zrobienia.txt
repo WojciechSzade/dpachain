@@ -1,0 +1,21 @@
+wycofawać się ze słowa klient -> rozbić na dwa; 
+uczestnik -> węzeł
+Podzielić założenia projektu;
+dane osobiste -> dane osobowe;
+nie dozwolone -> wymagane, 
+krok 6 - powołać się na dokument;
+odpowiednia strona -> konkretna;
+Dodać utrzymywanie własnej kopii do zarysu rozwiązania'
+niezauważalny -> inne słowo;
+brakuje wielu funkcjonalności - jakich?
+takie zrozumiałe -> popraw;
+skutkować w problach 
+dodaj, że django zostało odrzucone;
+poszczególne endpointy -> wyrzucić;
+Zaplecze systemu składa się z wielu komponentów - wywal;
+współpracuje -> nie pracuje równolegle;
+ładunek -> poprawić;
+swojego w protokole;
+instrukcja dla każdego z uczestników;
+
+

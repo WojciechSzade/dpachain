@@ -29,10 +29,9 @@ class Settings(BaseSettings):
     NETWORK_ID: str
     CHAIN_VERSION: str
     AUTHORIZED: bool = False
-    SIGNING_KEY_NAME: str = None
+    SIGNING_KEY_NAME: str
 
     @computed_field
-    @property
     def MONGODB_URL(self) -> str:
         return str(MongoDsn.build(
             scheme="mongodb",
@@ -44,16 +43,14 @@ class Settings(BaseSettings):
         ))
 
     @computed_field
-    @property
     def SIGNING_PRIVATE_KEY(self) -> str:
         if self.SIGNING_KEY_NAME is None:
             warnings.error("No signing key name provided")
             raise Exception("No signing key name provided")
         with open("signing_keys/" + self.SIGNING_KEY_NAME, "r") as private_key_file:
             return private_key_file.read()
-        
+
     @computed_field
-    @property
     def SIGNING_PUBLIC_KEY(self) -> str:
         if self.SIGNING_KEY_NAME is None:
             warnings.error("No signing key name provided")

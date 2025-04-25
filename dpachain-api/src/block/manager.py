@@ -1,41 +1,39 @@
 import logging
-from datetime import datetime
+import datetime
 
 from Cryptodome.PublicKey import RSA
 from Cryptodome.Signature import PKCS1_v1_5
 from Cryptodome.Hash import SHA256
 import base64
 
-from src.peer.manager import PeersManager
+from src.peer.interfaces import IPeerManager
+from src.node.interfaces import INodeManager
+
 from src.utils.utils import require_authorized
 from src.block.errors import *
 from src.block.models import Block
+from src.block.interfaces import IBlockManager
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class BlockManager:
-    def __init__(self, database, network_id, chain_version, authorized, signing_private_key=None):
+class BlockManager(IBlockManager):
+    def __init__(self, database, network_id: str, chain_version: str, authorized: bool, signing_private_key):
         self.db = database.blockchain
         self.blocks = self.db.blocks
         self.network_id = network_id
         self.chain_version = chain_version
-        self.transactions = []
         self.authorized = authorized
-        self.peer_manager = None
-        self.node_manager = None
-        if self.authorized:
-            if signing_private_key is None:
-                raise ValueError(
-                    "signing_private_key is required for authorized blockchain service")
-            self.signing_private_key = RSA.import_key(signing_private_key)
+        self.peer_manager: IPeerManager
+        self.node_manager: INodeManager
+        self.signing_private_key = RSA.import_key(signing_private_key)
 
-    def set_peer_manager(self, peer_manager: PeersManager):
+    def set_peer_manager(self, peer_manager: IPeerManager):
         self.peer_manager = peer_manager
 
-    def set_node_manager(self, node_manager):
+    def set_node_manager(self, node_manager: INodeManager):
         self.node_manager = node_manager
 
     @require_authorized
@@ -55,21 +53,25 @@ class BlockManager:
             "0",
             "0",
             0,
-            datetime.min.date(),
+            datetime.datetime.min.date(),
             "0",
             "0",
             "0",
             "0",
             self.peer_manager.get_own_peer_name(),
             self.chain_version,
-            self.sign_hash_with_private_key
+            self._sign_hash_with_private_key
         )
         logger.info(f"Genesis block - {block}")
-        self.blocks.insert_one(block.dict)
+        self.blocks.insert_one(block.as_dict())
 
     @require_authorized
-    def create_new_block(self, diploma_type: str, pdf_file: str, authors: (list[str] | str), authors_id: (list[str] | str), title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), additional_info: (str | None) = None):
-        last_block = self.get_latest_block()
+    def create_new_block(
+            self, diploma_type: str, pdf_file: bytes, authors: (list[str] | str), authors_id: (list[str] | str),
+            title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date,
+            university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str),
+            additional_info: (str | None) = None):
+        last_block = self.get_last_block()
         if last_block is None:
             raise BlockNotFoundError(
                 "genesis block", "Could not create new block, because there are no blocks in the chain"
@@ -77,35 +79,21 @@ class BlockManager:
         previous_block = last_block.hash
         _id = last_block._id + 1
         pdf_hash = Block.calculate_pdf_hash(pdf_file)
-        block = Block.create_block(
-            previous_block,
-            _id,
-            diploma_type,
-            pdf_hash,
-            authors,
-            authors_id,
-            title,
-            language,
-            discipline,
-            is_defended,
-            date_of_defense,
-            university,
-            faculty,
-            supervisor,
-            reviewer,
-            self.peer_manager.get_own_peer_name(),
-            self.chain_version,
-            self.sign_hash_with_private_key,
-            additional_info
-        )
+        block = Block.create_block(previous_block=previous_block, _id=_id, diploma_type=diploma_type,
+                                   pdf_hash=pdf_hash, authors=authors, authors_id=authors_id, title=title,
+                                   language=language, discipline=discipline, is_defended=is_defended,
+                                   date_of_defense=date_of_defense, university=university, faculty=faculty,
+                                   supervisor=supervisor, reviewer=reviewer, peer_author=self.peer_manager.get_own_peer_name(),
+                                   chain_version=self.chain_version, signing_function=self._sign_hash_with_private_key,
+                                   additional_info=additional_info)
         try:
-            self.blocks.insert_one(block.dict)
+            self.blocks.insert_one(block.as_dict())
         except Exception as e:
             logger.error(f"Failed to insert block: {e}")
             raise e
         return block
 
-    def get_latest_block(self):
+    def get_last_block(self):
         if self.blocks.count_documents({}) < 1:
             raise BlockNotFoundError("latest", "No blocks in the database.")
         return Block.from_dict(self.blocks.find_one(sort=[('_id', -1)]))
@@ -114,7 +102,7 @@ class BlockManager:
         return [Block.from_dict(block) for block in self.blocks.find(sort=[('_id', 1)])] if self.blocks.count_documents({}) > 0 else []
 
     @require_authorized
-    def sign_hash_with_private_key(self, hash):
+    def _sign_hash_with_private_key(self, hash):
         encrypted_hash = SHA256.new(hash.encode('utf-8'))
         signature = PKCS1_v1_5.new(
             self.signing_private_key).sign(encrypted_hash)
@@ -127,22 +115,22 @@ class BlockManager:
     def get_chain_size(self):
         return self.blocks.count_documents({})
 
-    def get_block_by_index(self, index):
+    def get_block_by_index(self, index: int):
         return Block.from_dict(self.blocks.find_one({"_id": index}))
 
-    def get_block_by_hash(self, hash):
+    def get_block_by_hash(self, hash: str):
         block = self.blocks.find_one({"hash": hash})
         if not block:
             raise BlockNotFoundError(hash)
         return Block.from_dict(block)
 
-    def add_block(self, block):
+    def add_block(self, block: Block):
         try:
             self.validate_block(block)
         except UnauthorizedBlockError as e:
             logger.error(f"Failed to validate block: {e}")
             raise e
-        self.blocks.insert_one(block.dict)
+        self.blocks.insert_one(block.as_dict())
         return block
 
     def validate_block(self, block):
@@ -157,7 +145,8 @@ class BlockManager:
             raise UnauthorizedBlockError(
                 block, "Could not validate block, because previous block hash does not match"
             )
-        author_peer = self.peer_manager.get_peer_by_nickname(block.peer_author)
+        author_peer = self.peer_manager.get_peer_by_nickname(
+            block.peer_author)
         if author_peer is None:
             raise UnauthorizedBlockError(
                 block, "Could not validate block, because author peer does not exist"
@@ -186,4 +175,4 @@ class BlockManager:
         return block
 
     def compare_blocks(self, block1, block2):
-        return block1.dict == block2.dict
+        return block1.as_dict() == block2.as_dict()

@@ -1,17 +1,20 @@
+from __future__ import annotations
 from asyncio import sleep
-from datetime import datetime
+import datetime
 import logging
 import random
-from p2pd import *
+import p2pd
 from tenacity import after_log, before_log, before_sleep_log, retry, stop_after_attempt, retry_if_result
 
-from src.block.manager import BlockManager
+from src.node.interfaces import INodeManager
+from src.block.interfaces import IBlockManager
+from src.peer.interfaces import IPeerManager
 from src.block.models import Block
 from src.node.protocols import ProtocolManager
 from src.node.errors import *
 from src.peer.errors import PeerNotFoundError
 from src.peer.models import Peer, PeerStatus
-from src.peer.manager import PeersManager
+from src.peer.manager import PeerManager
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -20,32 +23,32 @@ logger = logging.getLogger(__name__)
 max_tries = 20  # 2 minutes
 
 
-class NodeManager:
-    def __init__(self, nickname):
-        self.node = None
-        self.peers_manager = None
-        self.block_manager = None
+class NodeManager(INodeManager):
+    def __init__(self, nickname: str, port: int):
+        self.node: p2pd.P2PNode
+        self.peer_manager: IPeerManager
+        self.block_manager: IBlockManager
         self.protocol_manager = ProtocolManager(self)
         self.nickname = nickname
-        self.pipes = []
+        self.port = port
 
-    def set_block_manager(self, block_manager: BlockManager):
+    def set_block_manager(self, block_manager: IBlockManager):
         self.block_manager = block_manager
         self.protocol_manager.set_block_manager(block_manager)
 
-    def set_peers_manager(self, peers_manager: PeersManager):
-        self.peers_manager = peers_manager
-        self.protocol_manager.set_peers_manager(peers_manager)
+    def set_peer_manager(self, peer_manager: IPeerManager):
+        self.peer_manager = peer_manager
+        self.protocol_manager.set_peer_manager(peer_manager)
 
-    async def start(self, port):
-        self.node: P2PNode = await self.__create_node(port)
+    async def start(self):
+        self.node = await self.__create_node(self.port)
         try:
             await self._set_node_nickname(self.nickname)
         except Exception as e:
             logger.error(f"Failed to set node nickname: {e}")
             logger.info(
                 f"Setting node adress to ip {self.node.addr_bytes.decode()}")
-            self.peers_manager.change_own_peer_nickname(
+            self.peer_manager.change_own_peer_nickname(
                 self.node.addr_bytes.decode())
 
     async def stop(self):
@@ -54,7 +57,7 @@ class NodeManager:
     async def _set_node_nickname(self, nickname):
         try:
             node_nickname = await self.node.nickname(nickname)
-            self.peers_manager.change_own_peer_nickname(
+            self.peer_manager.change_own_peer_nickname(
                 node_nickname, self.node.addr_bytes.decode())
             logger.info(f"Node nickname set to: {node_nickname}")
         except Exception as e:
@@ -63,7 +66,7 @@ class NodeManager:
 
     async def sync_chain(self):
         logger.info("Starting sync chain")
-        peer_list = self.peers_manager.get_valid_peers_to_connect()
+        peer_list = self.peer_manager.get_valid_peers_to_connect()
         responses = []
         logger.info(f"Nodes list: {peer_list}")
         for peer in peer_list:
@@ -79,7 +82,7 @@ class NodeManager:
                 {"pipe": pipe, "node": peer, "chain_size": chain_size})
         if len(responses) == 0:
             raise NoPeersAviableError()
-        best_nodes = self.select_best_peer(responses)
+        best_nodes = self.select_best_peers(responses)
         for best_node in best_nodes:
             logger.info(f"Connect to best node {best_node.nickname}")
             try:
@@ -87,7 +90,7 @@ class NodeManager:
             except PeerUnavailableError:
                 continue
             own_chain_size = self.block_manager.get_chain_size()
-            own_last_block_hash = self.block_manager.get_latest_block(
+            own_last_block_hash = self.block_manager.get_last_block(
             ).hash if own_chain_size > 0 else None
             try:
                 res = await self.protocol_manager.request_compare_blockchain(pipe)
@@ -137,7 +140,11 @@ class NodeManager:
                 self.block_manager.add_block(block)
         return "Chain has been synced!"
 
-    def select_best_peer(self, responses):
+    def select_best_peers(self, responses):
+        """
+        Returns peers that have the greatest chain size.  
+        Results are sorted by 1. if_authorized and 2. randomly
+        """
         best_authorized = []
         best_authorized_chain_size = 0
         best_unathorized = []
@@ -171,7 +178,7 @@ class NodeManager:
     async def __create_node(self, port):
         try:
             logger.info("Creating node...")
-            node = await P2PNode(port=port)
+            node = await p2pd.P2PNode(port=port)
             node.add_msg_cb(self.protocol_manager.add_peer_protocole_support)
             await node.start(out=True)
             logger.info(f"Node started = {node.addr_bytes}")
@@ -181,7 +188,7 @@ class NodeManager:
             logger.error(f"Failed to create node: {e}")
             raise e
 
-    async def change_node_nickname(self, nickname):
+    async def change_node_nickname(self, nickname: str):
         try:
             self.nickname = nickname
             await self._set_node_nickname(nickname)
@@ -189,16 +196,16 @@ class NodeManager:
             logger.error(f"Failed to change node nickname: {e}")
             raise e
 
-    async def present_to_peer(self, nickname):
-        peer = self.peers_manager.get_peer_by_nickname(nickname)
+    async def present_to_peer(self, nickname: str):
+        peer = self.peer_manager.get_peer_by_nickname(nickname)
         pipe = await self.node.connect(peer.nickname)
         if pipe is None:
             raise PeerNotFoundError(peer.nickname)
         await self.protocol_manager.present_self(pipe)
         return
 
-    async def ask_peer_to_sync(self, nickname):
-        peer = self.peers_manager.get_peer_by_nickname(nickname)
+    async def ask_peer_to_sync(self, nickname: str):
+        peer = self.peer_manager.get_peer_by_nickname(nickname)
         pipe = await self.node.connect(peer.nickname)
         if pipe is None:
             raise PeerNotFoundError(peer.nickname)
@@ -210,13 +217,18 @@ class NodeManager:
         after=after_log(logger, logging.WARN),
         before_sleep=before_sleep_log(logger, logging.INFO)
     )
-    async def generate_new_block(self, diploma_type: str, pdf_file: str, authors: (list[str] | str), authors_id: (list[str] | str),  title: str, language: str, discipline: str, is_defended: int, date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str), reviewer: (list[str] | str), additional_info: (str | None) = None):
+    async def generate_new_block(
+            self, diploma_type: str, pdf_file: bytes, authors: (list[str] | str),
+            authors_id: (list[str] | str),  title: str, language: str, discipline: str,
+            is_defended: int, date_of_defense: datetime.date, university: str, faculty: str,
+            supervisor: (list[str] | str), reviewer: (list[str] | str),
+            additional_info: (str | None) = None):
         await self.sync_chain()
-        block = self.block_manager.create_new_block(diploma_type, pdf_file, authors, authors_id,
-                                                    title, language, discipline, is_defended, date_of_defense,
-                                                    university, faculty, supervisor, reviewer,
-                                                    additional_info=None)
-        peers_list = self.peers_manager.get_valid_peers_to_connect()
+        block = self.block_manager.create_new_block(diploma_type=diploma_type, pdf_file=pdf_file, authors=authors, authors_id=authors_id,
+                                                    title=title, language=language, discipline=discipline, is_defended=is_defended, date_of_defense=date_of_defense,
+                                                    university=university, faculty=faculty, supervisor=supervisor, reviewer=reviewer,
+                                                    additional_info=additional_info)
+        peers_list = self.peer_manager.get_valid_peers_to_connect()
         responses = []
         logger.info(f"Nodes list: {peers_list}")
         for peer in peers_list:
@@ -227,14 +239,14 @@ class NodeManager:
             chain_size = await self.protocol_manager.request_chain_size(pipe)
             if chain_size is None:
                 logger.info(f"Failed to get chain size from {peer.nickname}")
-                self.peers_manager.set_peer_status(
+                self.peer_manager.set_peer_status(
                     peer, PeerStatus.INACTIVE)
                 continue
             responses.append(
                 {"pipe": pipe, "node": peer, "chain_size": chain_size})
         if len(responses) == 0:
             raise NoPeersAviableError()
-        best_peers_list = self.select_best_peer(responses)
+        best_peers_list = self.select_best_peers(responses)
         for peer in best_peers_list:
             logger.info(f"Connect to best node {peer.nickname}")
             try:
@@ -254,7 +266,7 @@ class NodeManager:
         if pipe is None:
             logger.info(
                 f"Failed to connect to {peer.nickname} with previous state {peer.get_state()}")
-            self.peers_manager.set_peer_status(
+            self.peer_manager.set_peer_status(
                 peer, PeerStatus.INACTIVE)
             raise PeerUnavailableError(peer)
         return pipe
@@ -273,7 +285,7 @@ class NodeManager:
                     logger.error(f"Failed to get response from peer: {str(e)}")
                     continue
                 own_chain_size = self.block_manager.get_chain_size()
-                own_last_block_hash = self.block_manager.get_latest_block(
+                own_last_block_hash = self.block_manager.get_last_block(
                 ).hash if own_chain_size > 0 else None
                 chain_size, last_block_hash = res
                 logger.info(
@@ -284,7 +296,7 @@ class NodeManager:
                     pipe = await self.node.connect(peer.nickname)
                     if pipe is None:
                         logger.info(
-                            f"Failed to connect to {peer.nickname} with previous state {self.peers_manager.get_peer_state(peer.nickname)}")
+                            f"Failed to connect to {peer.nickname} with previous state {peer.get_state}")
                     received_block = await self.protocol_manager.request_block(
                         pipe, own_chain_size - 1)
                     if received_block is None:

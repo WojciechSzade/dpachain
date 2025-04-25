@@ -41,7 +41,7 @@ router.post('/create_diploma', upload.single('pdf_file'), async (req, res) => {
   }
 
   try {
-    const url = new URL('/staff/create_diploma', API_BASE_URL);
+    const url = new URL('/staff/generate_new_block', API_BASE_URL);
     ['diploma_type', 'title', 'language', 'discipline', 'is_defended', 'date_of_defense', 'university', 'faculty']
       .forEach(key => {
         if (req.body[key] != null) {
