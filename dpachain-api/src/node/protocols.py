@@ -83,7 +83,7 @@ class ProtocolManager:
 
     async def add_peer_protocole_support(self, msg, client_tup, pipe):
         # This try statement is used to log exceptions,
-        # as this method exits silenty if it runs into an exception
+        # as this method exits silenty if it runs into one
         try:
             parsed = self.parse_message(msg)
             if parsed is None:
@@ -140,7 +140,7 @@ class ProtocolManager:
             logger.error(e)
             raise e
 
-    async def handle_unknown_author(self, author, protocol):
+    def handle_unknown_author(self, author, protocol):
         """Respond to unknown author - let them know to present themselves"""
         e = InvalidMessageAuthorError(
             author, "author is unknown and protocol is not new_peer", protocol)

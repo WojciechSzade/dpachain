@@ -2,7 +2,7 @@ import logging
 import datetime
 
 from Cryptodome.PublicKey import RSA
-from Cryptodome.Signature import PKCS1_v1_5
+from Cryptodome.Signature import pss
 from Cryptodome.Hash import SHA256
 import base64
 
@@ -100,8 +100,9 @@ class BlockManager(IBlockManager):
     @require_authorized
     def _sign_hash_with_private_key(self, hash):
         encrypted_hash = SHA256.new(hash.encode('utf-8'))
-        signature = PKCS1_v1_5.new(
-            self.signing_private_key).sign(encrypted_hash)
+        # signature = PKCS1_v1_5.new(
+        #     self.signing_private_key).sign(encrypted_hash)
+        signature = pss.new(self.signing_private_key).sign(encrypted_hash)
         result = base64.b64encode(signature).decode()
         return result
 
@@ -152,7 +153,7 @@ class BlockManager(IBlockManager):
                 block, "Could not validate block, because hash does not match - calculated hash does not match"
             )
         public_key = RSA.import_key(author_peer.public_key)
-        verifier = PKCS1_v1_5.new(public_key)
+        verifier = pss.new(public_key)
         if not verifier.verify(SHA256.new(block.hash.encode('utf-8')), base64.b64decode(block.signed_hash)):
             raise UnauthorizedBlockError(
                 block, "Could not validate block, because hash signed (with author's key) does not match"

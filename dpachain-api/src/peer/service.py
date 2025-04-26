@@ -14,6 +14,8 @@ class PeerService(IPeerService):
 
     def get_peers_list(self) -> list[Peer]:
         peers = self.peer_manager.get_peers_list()
+        for peer in peers:
+            peer.status = PeerStatus(peer.status).name
         return peers
 
     def remove_peer(self, nickname: str):

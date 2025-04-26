@@ -100,7 +100,7 @@ class PeerManager(IPeerManager):
     def change_own_peer_nickname(self, nickname, adress=None):
         if self.own_peer is None:
             return self._set_own_peer(nickname, adress)
-        self.set_peer_status(self.own_peer, PeerStatus.UNKNOWN)
+        self.remove_peer(self.own_peer, remove_own=True)
         self.own_peer = self.add_new_peer(
             nickname, self.public_key, adress, self.authorized, PeerStatus.OWN)
 
