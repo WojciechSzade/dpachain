@@ -100,8 +100,6 @@ class BlockManager(IBlockManager):
     @require_authorized
     def _sign_hash_with_private_key(self, hash):
         encrypted_hash = SHA256.new(hash.encode('utf-8'))
-        # signature = PKCS1_v1_5.new(
-        #     self.signing_private_key).sign(encrypted_hash)
         signature = pss.new(self.signing_private_key).sign(encrypted_hash)
         result = base64.b64encode(signature).decode()
         return result
