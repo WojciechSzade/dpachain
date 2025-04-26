@@ -61,8 +61,8 @@ class PeerManager(IPeerManager):
             upsert=True)
         return new_peer
 
-    def remove_peer(self, peer: Peer):
-        if peer.get_state() == PeerStatus.OWN:
+    def remove_peer(self, peer: Peer, remove_own=False):
+        if peer.get_state() == PeerStatus.OWN and not remove_own:
             raise PeerRemovalError(peer.nickname, "Cannot remove own peer")
         elif peer.status == PeerStatus.BANNED:
             raise PeerBannedError(peer.nickname)
@@ -84,9 +84,16 @@ class PeerManager(IPeerManager):
     def _set_own_peer(self, nickname: str, adress=None):
         if self.own_peer is not None:
             raise OwnPeerAlreadyExistsError(self.own_peer)
-        if len(self._get_peers_by_status(PeerStatus.OWN)) > 0:
-            raise OwnPeerAlreadyExistsError(
-                self._get_peers_by_status(PeerStatus.OWN)[0].nickname)
+        own_peers_in_db = self._get_peers_by_status(PeerStatus.OWN)
+        if len(own_peers_in_db) > 0:
+            if own_peers_in_db == 1:
+                if own_peers_in_db[0].nickname == nickname:
+                    return
+                else:
+                    self.remove_peer(own_peers_in_db[0], remove_own=True)
+            else:
+                for invalid_own_peer in own_peers_in_db:
+                    self.remove_peer(invalid_own_peer, remove_own=True)
         self.own_peer = self.add_new_peer(
             nickname, self.public_key, adress, self.authorized, PeerStatus.OWN)
 

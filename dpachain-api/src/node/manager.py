@@ -178,15 +178,22 @@ class NodeManager(INodeManager):
     async def __create_node(self, port):
         try:
             logger.info("Creating node...")
-            node = await p2pd.P2PNode(port=port)
+            if_names = await p2pd.list_interfaces()
+            ifs = await p2pd.load_interfaces(if_names)
+            node = p2pd.P2PNode(port=port, ifs=ifs)
             node.add_msg_cb(self.protocol_manager.add_peer_protocole_support)
-            await node.start(out=True)
+            await node.start()
             logger.info(f"Node started = {node.addr_bytes}")
             logger.info(f"Node port = {node.listen_port}",)
-            return node
         except Exception as e:
             logger.error(f"Failed to create node: {e}")
             raise e
+        try:
+            nick = await node.nickname(node.node_id)
+        except Exception as e:
+            logger.error(e)
+        return node
+        
 
     async def change_node_nickname(self, nickname: str):
         try:

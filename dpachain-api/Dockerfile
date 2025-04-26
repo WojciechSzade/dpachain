@@ -22,8 +22,6 @@ RUN poetry install --no-interaction --no-cache
 
 COPY . /src
 
-# Expose dynamic port
-EXPOSE ${PORT}
 
 # Run your app dynamically on the specified port
-CMD ["sh", "-c", "poetry run fastapi dev src/main.py --port ${PORT}"]
+CMD ["sh", "-c", "poetry run fastapi dev src/main.py"]

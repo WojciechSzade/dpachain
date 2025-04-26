@@ -110,10 +110,6 @@ class IBlockService(ABC):
         ...
 
     @abstractmethod
-    def get_latest_block(self):
-        ...
-
-    @abstractmethod
     def get_all_blocks(self):
         ...
 
@@ -123,10 +119,6 @@ class IBlockService(ABC):
 
     @abstractmethod
     def generate_genesis_block(self):
-        ...
-
-    @abstractmethod
-    def create_new_block(self, diploma_type, pdf_hash, authors, authors_id, title, language, discipline, is_defended, date_of_defense, university, faculty, supervisor, reviewer, additional_info=None):
         ...
 
     @abstractmethod

@@ -16,9 +16,9 @@ def get_block_service(request: Request) -> IBlockService:
 
 
 def get_peer_service(request: Request) -> IPeerService:
-    try:
+    if request.app.state.service_started:
         return request.app.state.peer_service
-    except:
+    else:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Peer service was not started yet",
@@ -26,9 +26,9 @@ def get_peer_service(request: Request) -> IPeerService:
 
 
 def get_node_service(request: Request) -> INodeService:
-    try:
+    if request.app.state.service_started:
         return request.app.state.node_service
-    except:
+    else:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Node service was not started yet",

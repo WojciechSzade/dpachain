@@ -1,44 +1,66 @@
 @startuml
-
 skin rose
-database "MongoDB" {
-component [Blockchain Database] as DB
-}
-package "Backend"{
-component [Blockchain service] as BM
-component [API]
-component [Node service] as NM
-component [Peer service] as PM
-component [Block service] as BS
-}
-cloud {
-component [Other users in network] as users
+
+
+database "MongoDB" as MDB
+
+package "Backend" {
+  
+  component [MongoClient] as MC
+  MC --> MDB : connects to
+
+  
+
+  component [API]
+  component [Block Manager] as BM
+  component [Node Manager] as NM
+  component [Peer Manager] as PM
+  component [Block Service] as BS
+  component [Node Service] as NS
+  component [Peer Service] as PS
+  
+  interface IBlockManager as IBM
+  interface INodeManager as INM
+  interface IPeerManager as IPM
+  interface IBlockService as IBS
+  interface INodeService as INS
+  interface IPeerService as IPS
+
+
+  BS -up-|> IBS
+  NS -up-|> INS
+  PS -up-|> IPS
+  
+  BM -up-|> IBM
+  NM -up-|> INM
+  PM -up-|> IPM
+
+  NS ..> INM : <<injected>>
+  PS ..> IPM : <<injected>>
+  BS ..> IBM : <<injected>>
+  
+  BM .up.> IPM : <<injected>>
+  NM .up.> IPM : <<injected>>
+  NM .up.> IBM : <<injected>>
+  
+  
+  API .down.> INS : <<injected>>
+  API .down.> IPS : <<injected>>
+  API .down.> IBS : <<injected>>
+
+PM ..> MC : <<injected>>
+BM ..> MC : <<injected>>
 }
 
 package "Frontend" {
-component [Frontend server] as FS
+  component [Web app] as FS
 }
 
+cloud {
+  component [Other users in network] as users
+}
 
-interface IDatabaseConnection
-interface IAPIConnection
-
-DB -- IDatabase
-
-BM --( IDatabase
-BM -- IDatabaseConnection
-BS --( IDatabaseConnection
-PM --( IDatabaseConnection
-
-NM <.up.> users : P2P connection
-
-API -> BM
-BM <-> BS
-BM <-> NM
-BM <-> PM
-
-API --( IAPIConnection
-FS -- IAPIConnection
-
+NM <--> users : communicates
+FS --> API
 
 @enduml
