@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-from datetime import datetime
+import hashlib
 import json
-import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
 import jwt
+import tkinter as tk
+from tkinter import filedialog, messagebox, scrolledtext, ttk
+from datetime import datetime
 
 # ─────────────────────────────────────────────────────────────────────────────
-# YOUR GENESIS BLOCK – replace or update as needed:
+# GENESIS BLOCK
 GENESIS = {
     "blocks": [
         {
@@ -50,7 +51,11 @@ class App(tk.Tk):
         super().__init__()
         self.title("DPAChain Authenticator")
         self.geometry("2560x1440")
-        self.minsize(700, 500)
+        self.minsize(700, 600)
+
+        self.uploaded_pdf_bytes = None
+        self.calculated_pdf_hash = None
+        self.jwt_payload = None
 
         self.style = ttk.Style(self)
         self.style.configure("Treeview", rowheight=32, font=('Segoe UI', 10))
@@ -62,31 +67,47 @@ class App(tk.Tk):
 
     def create_widgets(self):
         self.title_label = tk.Label(
-            self, text="DPAChain Authenticator", font=("Segoe UI", 18, "bold")
-        )
-        self.title_label.grid(row=0, column=0, columnspan=3, pady=(0, 10), sticky="n")
+            self, text="DPAChain Authenticator", font=("Segoe UI", 18, "bold"))
+        self.title_label.grid(row=0, column=0, columnspan=3,
+                              pady=(0, 10), sticky="n")
 
         tk.Label(self, text="Paste JWT token below:").grid(
-            row=1, column=0, columnspan=3, sticky="w"
-        )
+            row=1, column=0, columnspan=3, sticky="w")
+        self.jwt_text = scrolledtext.ScrolledText(self, wrap=tk.WORD, height=8)
+        self.jwt_text.grid(row=2, column=0, columnspan=3,
+                           sticky="nsew", pady=(0, 10))
 
-        self.jwt_text = scrolledtext.ScrolledText(self, wrap=tk.WORD, height=10)
-        self.jwt_text.grid(row=2, column=0, columnspan=3, sticky="nsew", pady=(0,10))
+        self.upload_btn = tk.Button(
+            self, text="Upload PDF (optional)", command=self.upload_pdf)
+        self.upload_btn.grid(row=3, column=0, pady=(0, 10), sticky="w")
 
         btn_frame = tk.Frame(self)
-        btn_frame.grid(row=3, column=0, columnspan=3, pady=(5, 10))
+        btn_frame.grid(row=4, column=0, columnspan=3, pady=(5, 10))
 
-        self.auth_btn = tk.Button(btn_frame, text="Authenticate", command=self.authenticate)
+        self.auth_btn = tk.Button(
+            btn_frame, text="Authenticate", command=self.authenticate)
         self.auth_btn.pack(side="left", padx=(0, 5))
 
-        self.clear_btn = tk.Button(btn_frame, text="Clear", command=self.clear_input)
+        self.clear_btn = tk.Button(
+            btn_frame, text="Clear", command=self.clear_input)
         self.clear_btn.pack(side="left")
 
         self.result_label = tk.Label(self, text="", font=("Segoe UI", 14))
-        self.result_label.grid(row=4, column=0, columnspan=3, pady=(5,5))
+        self.result_label.grid(row=5, column=0, columnspan=3, pady=(5, 5))
+
+        # PDF hash input + copy button
+        self.pdf_hash_entry = tk.Entry(self, font=(
+            "Segoe UI", 10), state="readonly", width=80)
+        self.pdf_hash_entry.grid(
+            row=6, column=0, columnspan=2, sticky="ew", pady=(5, 5))
+
+        self.copy_hash_btn = tk.Button(
+            self, text="Copy Hash", command=self.copy_pdf_hash)
+        self.copy_hash_btn.grid(row=6, column=2, sticky="w", padx=(5, 0))
 
         self.summary_frame = tk.Frame(self)
-        self.summary_frame.grid(row=5, column=0, columnspan=3, sticky="ew", pady=(5,10))
+        self.summary_frame.grid(
+            row=7, column=0, columnspan=3, sticky="ew", pady=(5, 10))
         self.summary_labels = {}
         summary_fields = [
             ('Title', 'title'),
@@ -99,21 +120,24 @@ class App(tk.Tk):
             ('Date Of Defense', 'date_of_defense'),
         ]
         for i, (disp, key) in enumerate(summary_fields):
-            lbl = tk.Label(self.summary_frame, text=f"{disp}:", font=("Segoe UI", 12), anchor="w")
+            lbl = tk.Label(self.summary_frame, text=f"{disp}:", font=(
+                "Segoe UI", 12), anchor="w")
             lbl.grid(row=i, column=0, sticky="w", pady=2)
-            val = tk.Label(self.summary_frame, text="", font=("Segoe UI", 12, "bold"), anchor="w")
-            val.grid(row=i, column=1, sticky="w", padx=(5,0), pady=2)
+            val = tk.Label(self.summary_frame, text="", font=(
+                "Segoe UI", 12, "bold"), anchor="w")
+            val.grid(row=i, column=1, sticky="w", padx=(5, 0), pady=2)
             self.summary_labels[key] = val
 
-        self.tree = ttk.Treeview(self, columns=("Key", "Value"), show="headings")
+        self.tree = ttk.Treeview(self, columns=(
+            "Key", "Value"), show="headings")
         self.tree.heading("Key", text="Key")
         self.tree.heading("Value", text="Value")
         self.tree.column("Key", width=300, anchor="w")
         self.tree.column("Value", width=550, anchor="w")
-        self.tree.grid(row=6, column=0, columnspan=3, sticky="nsew")
+        self.tree.grid(row=8, column=0, columnspan=3, sticky="nsew")
 
         vsb = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
-        vsb.grid(row=6, column=3, sticky='ns')
+        vsb.grid(row=8, column=3, sticky='ns')
         self.tree.configure(yscrollcommand=vsb.set)
 
     def setup_grid(self):
@@ -121,26 +145,65 @@ class App(tk.Tk):
         self.grid_columnconfigure(1, weight=1)
         self.grid_columnconfigure(2, weight=1)
         self.grid_rowconfigure(2, weight=0)
-        self.grid_rowconfigure(6, weight=1)
+        self.grid_rowconfigure(8, weight=1)
+
+    def upload_pdf(self):
+        path = filedialog.askopenfilename(
+            title="Select PDF", filetypes=[("PDF files", "*.pdf")])
+        if path:
+            with open(path, 'rb') as f:
+                self.uploaded_pdf_bytes = f.read()
+            self.calculated_pdf_hash = hashlib.sha256(
+                self.uploaded_pdf_bytes).hexdigest()
+
+            self.pdf_hash_entry.configure(state="normal")
+            self.pdf_hash_entry.delete(0, tk.END)
+            self.pdf_hash_entry.insert(0, self.calculated_pdf_hash)
+            self.pdf_hash_entry.configure(state="readonly")
+
+            if self.jwt_payload:
+                self.compare_pdf_hash()
+            else:
+                self.result_label.config(
+                    text="PDF hash calculated, waiting for JWT.", fg="blue")
+
+            messagebox.showinfo("PDF Uploaded", "PDF uploaded successfully!")
+
+    def copy_pdf_hash(self):
+        self.clipboard_clear()
+        self.clipboard_append(self.calculated_pdf_hash or "")
+        self.update()
+        messagebox.showinfo("Copied", "PDF hash copied to clipboard!")
 
     def clear_input(self):
         self.jwt_text.delete('1.0', tk.END)
         self.result_label.config(text="")
+        self.pdf_hash_entry.configure(state="normal")
+        self.pdf_hash_entry.delete(0, tk.END)
+        self.pdf_hash_entry.configure(state="readonly")
         for item in self.tree.get_children():
             self.tree.delete(item)
         for lbl in self.summary_labels.values():
             lbl.config(text="")
+        self.uploaded_pdf_bytes = None
+        self.calculated_pdf_hash = None
+        self.jwt_payload = None
 
     def authenticate(self):
         token = self.jwt_text.get("1.0", "end").strip()
         if not token:
-            messagebox.showwarning("Input required", "Please paste a JWT token.")
+            messagebox.showwarning(
+                "Input required", "Please paste a JWT token.")
             return
 
         for item in self.tree.get_children():
             self.tree.delete(item)
         for lbl in self.summary_labels.values():
             lbl.config(text="")
+        self.result_label.config(text="")
+        self.pdf_hash_entry.configure(state="normal")
+        self.pdf_hash_entry.delete(0, tk.END)
+        self.pdf_hash_entry.configure(state="readonly")
 
         try:
             header = jwt.get_unverified_header(token)
@@ -172,9 +235,24 @@ class App(tk.Tk):
             self.show_result(False, f"Failed to decode: {e}")
             return
 
+        self.jwt_payload = payload
         self.show_result(True, "✔️ VALID TOKEN")
         self.show_summary(payload)
         self.show_payload(payload)
+
+        if self.calculated_pdf_hash:
+            self.compare_pdf_hash()
+
+    def compare_pdf_hash(self):
+        token_pdf_hash = self.jwt_payload.get(
+            'pdf_hash') if self.jwt_payload else None
+        if not token_pdf_hash:
+            self.result_label.config(text="No pdf_hash in token.", fg="orange")
+        elif token_pdf_hash == self.calculated_pdf_hash:
+            self.result_label.config(text="✔️ PDF hash matches!", fg="green")
+        else:
+            self.result_label.config(
+                text="❌ PDF hash does NOT match!", fg="red")
 
     def show_result(self, valid: bool, msg: str):
         self.result_label.configure(
@@ -187,7 +265,6 @@ class App(tk.Tk):
             value = payload.get(key)
             if key == 'authors' and isinstance(value, list):
                 authors_id = payload.get('authors_id', [])
-                # Pair authors with their corresponding IDs
                 authors_with_ids = [
                     f"{author} ({authors_id[i]})" for i, author in enumerate(value) if i < len(authors_id)
                 ]
@@ -206,7 +283,8 @@ class App(tk.Tk):
 
     def show_payload(self, payload: dict):
         for k, v in payload.items():
-            self.tree.insert('', tk.END, values=(k, json.dumps(v, ensure_ascii=False)))
+            self.tree.insert('', tk.END, values=(
+                k, json.dumps(v, ensure_ascii=False)))
 
 if __name__ == "__main__":
     app = App()

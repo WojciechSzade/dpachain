@@ -27,4 +27,4 @@ class BlockService(IBlockService):
         return "Genesis block has been created"
 
     def calculate_pdf_hash(self, pdf_file):
-        return Block.calculate_pdf_hash(pdf_file)
+        return self.block_manager.calculate_pdf_hash(pdf_file)

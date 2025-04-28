@@ -188,3 +188,6 @@ class BlockManager(IBlockManager):
 
     def compare_blocks(self, block1, block2):
         return block1.as_dict() == block2.as_dict()
+
+    def calculate_pdf_hash(self, pdf_file):
+        return Block.calculate_pdf_hash(pdf_file)

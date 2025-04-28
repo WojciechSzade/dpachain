@@ -97,6 +97,10 @@ class IBlockManager(ABC):
         """Checks if two blocks are the same."""
         ...
 
+    @abstractmethod
+    def calculate_pdf_hash(self, pdf_file):
+        ...
+
 
 class IBlockService(ABC):
     """Service class to be used as a proxy between the API and BlockManager, with some neccessary improvments, for the API"""
@@ -130,7 +134,7 @@ class IBlock(ABC):
     hash: str
     signed_hash: str
     jwt_token: str
-    
+
     @classmethod
     @abstractmethod
     def create_block(cls, *args):
