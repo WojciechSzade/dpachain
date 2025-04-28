@@ -1,0 +1,26 @@
+{
+    "Politechnika Warszawska": {
+      "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqgI7CaWEeQ8eCVaiazg1\noPVPvbcFM2pU3cJt70feVkrY9P1FgJ+w2YJtEoitw7IrJ4j8xqxqYyNSvCbs+HmA\nbUXdO31CmMj9P2Q7Wcvu+UEo/VEyAcq6uJq50tv05IvHXlbruL0NXdgIHMV3Pxl+\nZ/Cda/lVnufo/YNmirtVZwGNbDC4TpEo1HSYwrWHVJ+o7TIX9XY5Z+g7wjrbVIuH\nJX0yQ+P5H6Aoo8nPnOqO/jfZ7bAv0dkjM6DypGoo2BjxuuIhr+FHrPA37PcpOt2S\nbp4uMDFk8Qf+I1XzQT96kMi1dcHcxLVupbn/Rd+AUAHSlVhJVBJwynLDEMI8NoOo\nWwIDAQAB\n-----END PUBLIC KEY-----\n"
+    },
+    "Politechnika Gdańska": {
+      "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAq+ee5CH50ywkagR2QrZ+\n+tpob+oB/7RnIQC/TuG+3nTbZ2LERPqeqK6DAUYkIf7/opNxzUZGQ3OFGLP0Rvbn\nTfKpBnxpdC242lG7/0sURFuAjncXhAEYkN9exvAUuZ3jjKaZAkF/wANOpKUbdD8E\n77mwfosZVfizxOhHxNmMlplyxhnZdCGefijhaq1Ua0xkqyDskld5PKtIVUHQUWJ4\nUynA9go4Q3/OJpYjbvTAAOKaA5NtxNLASLwQqeNMawuviQ8RoUGtbOIApAsM8W+4\nh1rus0Y1tp/+N26IKbsz8xm5bSSefyd1PLoUu5vDdbtuVgxMl9cbnah94Z4BHqrb\nIQIDAQAB\n-----END PUBLIC KEY-----\n"
+    },
+    "Uniwersytet Warszawski": {
+      "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAs0CLb5Oj2N4f1fIiBFd8\nJ3nuPJdsxBt3UBZBraL5Pa6jE2m19a0kUn57Md+Z3w65kcV2+Mw0Wnrc+WXP6gY/\n0zV+7DNAn/t++mRCe8yiIldZgNAyl+ptV1j4tAw8FQyr6Oi6DWYR747wftXV2gbx\nFlBWWEURB7xecJgiarsv6boECP8ABE1ol/6zpCx0VWBEEZfWpHgLaoeGO0xKpe/j\n7BLj+9wrreIiptsaB5VVvLwiYI9MbGC3SOgEncWgCSyZQ9onxzhtGY/fVShVh8v/\nVrUyliE4dStf1bBJjOdUZzKc4wNYwAeSsNr5BkefQjf+TOhODVxPYNm8JEGeKPIy\nRwIDAQAB\n-----END PUBLIC KEY-----\n"
+    },
+    "Uniwersytet Gdański": {
+      "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAypv11dUr4gLccFnwyb+e\nOAao5DsUVbxhkU3P1pK4Jc0CmGukgfTxDWhOzW8xRTUFuQTOK/Bm9249Xixz3Ga1\n0T7VXRyZQHOcxuVIFPHrUAD3s+ZnowgWQ6QTL0ntaQ6vxiE9gKQatMzTDDFDabAZ\n71PtSvMawpOm3+4Tn4/vpPJ7WZo7ULUvHVk2+ndgeHzAbLl9WHBgoxaa4Mg2W9mB\neDREvtb6WbZbsv0VTpqas+cEenjvfsf0+amCHSEZc3w5ZFrroPrHHN8oTETSeGJW\nv7XDrQOb0z3hbpVmSd7qfzxnk9UWhQLi8UZD+tHdP4K6WNsmu5GgoyCORhNErSX6\n6QIDAQAB\n-----END PUBLIC KEY-----\n"
+    },
+    "Akademia Górniczo-Hutnicza": {
+      "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAz2N2fuYATYr/vnb7NRTd\n4wOjnxFym3KwCniGhshWj4/MDG5gxg5F5cWLtWILRVts4A6Fa1aJJKJ88audHCtN\neYN/rZM1LB7uZm8M5Cyrb3TS88XTLkmhZtN0UlYWNQOQaJmc05sMWNgDjh1e4Shh\n6EH8//IqbPBaUkFYHBmWbWp6W+EUknJX5qDGGeYWkai1Y6/efonTIHROAr9Xl3Cf\nMjcsrqETcnEBRFABb4Vr9ll6sN3kAovbwcGpbJg/Ag1Ukon/F32W2//uoX1g6o5v\n828DB0DshPMNBR40rlVDsohIUhWdwSF+jV5ucvpuJ9xeEbAKF7M1wcG3BUpzs+Fr\nDQIDAQAB\n-----END PUBLIC KEY-----\n"
+    },
+    "Uniwersytet Jagielloński": {
+      "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAy6FPgBd1Bg0FzYZZyHGS\nLINkuGSvFNxvXe44CEfwCFTfD9SMYaNZI86mguK2mymlYNQqjpYedr1dBW05QiiX\n/mjdWarM4JWuvzTwVwPoO0Po1IiArqPL+QUANncovc3txL05TF/xxLkhQ0PPzptb\nhJordo6Ox4xij5EZhUlfDlc8VEtha/bmXu9G/nX9lQyVzkhNhRoTt6wnGXmv7kwH\nJ7WtjhTsshl8QLMopZOVdlDcjXGwWLJIQVyGEi3oUM+ydxO5TGv8UnP5rlS3CzGB\nsLAoF3QHgJ4u+bgoGh+TM7bIMMfUsG5jAYpWiODmJ5ScBEB6kL9JE98gMmiEwK72\n1QIDAQAB\n-----END PUBLIC KEY-----\n"
+    },
+    "Politechnika Wrocławska": {
+      "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApuTTRZKLAEDfa1G0Wmy1\nGebdRbdbjzJevxtMhRzmok1oKAs000dZdwzj2sBpetUQnjdoRKXarRxobviURT0u\nOM7Ovz9D1jhBftyhGwFMvNeuRoTzR5WnE4FdM1cXuI0/uCMIQgng9MQJXpdLOyzj\nO/8Bbj2NxTFNpsEP2TvcaMy7IWiyhER0wMScvHFi4JRYd3Y5FpvfykWzmXTD0c06\nf7NqxG01FamCCOsmJ9jnzdsln1CY2KA1RhgETC+yWUMbo58Ij/gZAufRE7b1dDjp\n97DSpUrTHJ2UILHjhSF9KslR2P51QMpY7NyeqJX4U8CFRBXabKNbIloFsjizZo9U\nOQIDAQAB\n-----END PUBLIC KEY-----\n"
+    },
+    "Uniwersytet Wrocławski": {
+      "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqQgnrIYID1a1Din/bed/\nmEtT7wu7Isd6nac6yCISsmpKjCIx8fsiYsnxZhDYYLr/Dw1C8OIGmbNvkfKgPrMb\npCDqs+nTc7/0Pi2Q6mof5L8OMdqGZ1keYRtl9rKkhZIwau0W/gTbatbrI0yHII6x\nsV/+WCoOzeGnGlCIqC3e6VCkFbKtz23eKy00HJkaQlahAzosk6pDDgPkIldDN/4E\nyyXWKaVoWZ5eDy53vDwKNWDUFwUToA69y/RHW7idZSXxqix2o5B/PGU6Dzu87U9c\n1W+NAm8x8PCsDczk+hAP3vs4oQw3DqWFHnGXyKGcqHdLNmDOngvCyk3wOvO7baFW\nCQIDAQAB\n-----END PUBLIC KEY-----\n"
+    }
+  }

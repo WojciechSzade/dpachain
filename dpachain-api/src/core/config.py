@@ -1,6 +1,8 @@
 
+import os
 import secrets
-import warnings
+from typing import Any
+
 
 from pydantic import (
     MongoDsn,
@@ -9,11 +11,12 @@ from pydantic import (
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic_core import MultiHostUrl
+from src.utils.utils import load_rsa_key, validate_key_pair
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=os.getenv("ENV_FILE", ".env"),
     )
     PROJECT_NAME: str
     MONGODB_SERVER: str
@@ -29,7 +32,10 @@ class Settings(BaseSettings):
     NETWORK_ID: str
     CHAIN_VERSION: str
     AUTHORIZED: bool = False
-    SIGNING_KEY_NAME: str
+    SIGNING_KEY_FILE_NAME: str
+    GENERATING_KEY_FILE_NAME: str | None = None
+    GENESIS_KEYS_FILE: str | None = None
+    UNIVERSITY_NAME: str | None = None
 
     @computed_field
     def MONGODB_URL(self) -> str:
@@ -44,19 +50,35 @@ class Settings(BaseSettings):
 
     @computed_field
     def SIGNING_PRIVATE_KEY(self) -> str:
-        if self.SIGNING_KEY_NAME is None:
-            warnings.error("No signing key name provided")
-            raise Exception("No signing key name provided")
-        with open("signing_keys/" + self.SIGNING_KEY_NAME, "r") as private_key_file:
-            return private_key_file.read()
+        return load_rsa_key(self.SIGNING_KEY_FILE_NAME + ".pem")
 
     @computed_field
     def SIGNING_PUBLIC_KEY(self) -> str:
-        if self.SIGNING_KEY_NAME is None:
-            warnings.error("No signing key name provided")
-            raise Exception("No signing key name provided")
-        with open("signing_keys/" + self.SIGNING_KEY_NAME + ".pub", "r") as public_key_file:
-            return public_key_file.read()
+        return load_rsa_key(self.SIGNING_KEY_FILE_NAME + ".pub")
+
+    @computed_field
+    def GENERATING_PRIVATE_KEY(self) -> str | None:
+        if self.GENERATING_KEY_FILE_NAME:
+            return load_rsa_key(self.GENERATING_KEY_FILE_NAME + ".pem")
+        return None
+
+    @computed_field
+    def GENERATING_PUBLIC_KEY(self) -> str | None:
+        if self.GENERATING_KEY_FILE_NAME:
+            return load_rsa_key(self.GENERATING_KEY_FILE_NAME + ".pub")
+        return None
+
+    def model_post_init(self, __context: Any) -> None:
+        assert self.NETWORK_ID is not None and self.NETWORK_ID != "", "NETWORK_ID must be set"
+        assert self.CHAIN_VERSION is not None and self.CHAIN_VERSION != "", "CHAIN_VERSION must be set"
+        assert validate_key_pair(
+            self.SIGNING_PRIVATE_KEY, self.SIGNING_PUBLIC_KEY), "Invalid signing key - key pair doesn't match"
+        if self.AUTHORIZED:
+            assert self.GENERATING_PUBLIC_KEY is not None, "Public generating key was not provided."
+            assert self.GENERATING_PRIVATE_KEY is not None, "Private generating key was not provided."
+            assert validate_key_pair(
+                self.GENERATING_PRIVATE_KEY, self.GENERATING_PUBLIC_KEY), "Invalid generating key - key pair doesn't match"
+            assert self.UNIVERSITY_NAME
 
 
 settings = Settings()

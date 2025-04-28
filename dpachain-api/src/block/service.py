@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import File
 from src.block.interfaces import IBlockManager
 from src.block.models import Block
+from src.core.config import settings
 
 from src.block.interfaces import IBlockService
 
@@ -22,7 +23,7 @@ class BlockService(IBlockService):
         return self.block_manager.get_block_by_hash(hash)
 
     def generate_genesis_block(self):
-        self.block_manager.generate_genesis_block()
+        self.block_manager.generate_genesis_block(settings.GENESIS_KEYS_FILE)
         return "Genesis block has been created"
 
     def calculate_pdf_hash(self, pdf_file):

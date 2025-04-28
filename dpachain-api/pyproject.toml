@@ -17,6 +17,9 @@ p2pd = "^3.1.0"
 netifaces = "^0.11.0"
 pycryptodomex = "^3.21.0"
 mypy = "^1.15.0"
+pyjwt = "^2.10.1"
+cryptography = "^44.0.2"
+uvloop = "^0.21.0"
 
 [build-system]
 requires = ["poetry-core"]

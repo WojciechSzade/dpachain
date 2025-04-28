@@ -6,7 +6,7 @@ class NodeError(Exception):
     pass
 
 
-class NoPeersAviableError(NodeError):
+class NoPeersAvailableError(NodeError):
     """Raised when could not connect to any valid peers from the database"""
 
     def __init__(self):

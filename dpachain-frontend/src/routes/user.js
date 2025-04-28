@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const parseDiploma = require('../utils/parseDiploma');
+const { parseDiplomaSummary, parseDiplomaDetails } = require('../utils/parseDiploma');
 const { API_BASE_URL } = require('../config');
 
 router.get('/', (req, res) => {
@@ -9,35 +9,33 @@ router.get('/', (req, res) => {
 
 router.get('/validate_diploma', async (req, res) => {
   const { block_hash } = req.query;
-
   if (!block_hash) {
     return res.render('user/validate_diploma', { title: 'Validate a Diploma' });
   }
 
   try {
-    const apiRes = await fetch(`${API_BASE_URL}/user/get_block_by_hash?block_hash=${encodeURIComponent(block_hash)}`, {
-      method: 'GET'
-    });
+    const apiRes = await fetch(
+      `${API_BASE_URL}/user/get_block_by_hash?block_hash=${encodeURIComponent(block_hash)}`
+    );
     const data = await apiRes.json();
-
-    if (!apiRes.ok) {
-      return res.render('user/validate_diploma', {
-        title: 'Validate a diploma',
-        error: { msg: JSON.stringify(data) },
-        block: null
-      });
+    if (!apiRes.ok || !data.block) {
+      const msg = data.detail || 'Error fetching diploma.';
+      return res.render('user/validate_diploma', { title: 'Validate a Diploma', error: { msg } });
     }
 
-    const block = parseDiploma(data.block);
-    res.render('user/validate_diploma', { title: 'Validate a Diploma', block });
+    const summary = parseDiplomaSummary(data.block);
+    const details = parseDiplomaDetails(data.block);
+    res.render('user/validate_diploma', {
+      title: 'Validate a Diploma',
+      blockSummary: summary,
+      blockDetails: details
+    });
   } catch (error) {
     res.render('user/validate_diploma', {
       title: 'Validate a Diploma',
-      error: { msg: error.message },
-      block: null
+      error: { msg: error.message || 'Unexpected error' }
     });
   }
 });
-
 
 module.exports = router;

@@ -24,4 +24,4 @@ COPY . /src
 
 
 # Run your app dynamically on the specified port
-CMD ["sh", "-c", "poetry run fastapi dev src/main.py"]
+CMD ["sh", "-c", "poetry run fastapi dev src/main.py --host 0.0.0.0 --port $PORT"]

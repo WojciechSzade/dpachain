@@ -1,6 +1,7 @@
 import logging
 import datetime
-
+from typing import Any
+import jwt as jwt
 from Cryptodome.PublicKey import RSA
 from Cryptodome.Signature import pss
 from Cryptodome.Hash import SHA256
@@ -11,8 +12,8 @@ from src.node.interfaces import INodeManager
 
 from src.utils.utils import require_authorized
 from src.block.errors import *
-from src.block.models import Block
-from src.block.interfaces import IBlockManager
+from src.block.models import Block, GenesisBlock
+from src.block.interfaces import IBlock, IBlockManager
 
 
 logging.basicConfig(level=logging.INFO)
@@ -20,45 +21,30 @@ logger = logging.getLogger(__name__)
 
 
 class BlockManager(IBlockManager):
-    def __init__(self, database, network_id: str, chain_version: str, authorized: bool, signing_private_key):
+    def __init__(self, database, network_id: str, chain_version: str, authorized: bool, generating_private_key, university_name):
         self.db = database.blockchain
         self.blocks = self.db.blocks
         self.network_id = network_id
         self.chain_version = chain_version
         self.authorized = authorized
         self.peer_manager: IPeerManager
-        self.signing_private_key = RSA.import_key(signing_private_key)
+        if self.authorized:
+            self.generating_private_key = RSA.import_key(
+                generating_private_key)
+            self.generating_private_key_str = generating_private_key
+            self.university_name = university_name
 
     def set_peer_manager(self, peer_manager: IPeerManager):
         self.peer_manager = peer_manager
 
     @require_authorized
-    def generate_genesis_block(self):
+    def generate_genesis_block(self, keys_file):
         if self.blocks.count_documents({}) > 0:
             raise BlockAlreadyExistsError(
                 "genesis block", "Could not generate genesis block, because it already exists"
             )
-        block = Block.create_block(
-            None,
-            0,
-            "0",
-            "0",
-            "0",
-            "0",
-            "Genesis block - not a real diploma!",
-            "0",
-            "0",
-            0,
-            datetime.datetime.min.date(),
-            "0",
-            "0",
-            "0",
-            "0",
-            self.peer_manager.get_own_peer_name(),
-            self.chain_version,
-            self._sign_hash_with_private_key
-        )
-        logger.info(f"Genesis block - {block}")
+        block = GenesisBlock.create_block(keys_file=keys_file, signing_function=self._sign_hash_with_private_key,
+                                          jwt_encoding_function=self._encode_to_jwt_with_private_key)
         self.blocks.insert_one(block.as_dict())
 
     @require_authorized
@@ -80,7 +66,7 @@ class BlockManager(IBlockManager):
                                    language=language, discipline=discipline, is_defended=is_defended,
                                    date_of_defense=date_of_defense, university=university, faculty=faculty,
                                    supervisor=supervisor, reviewer=reviewer, peer_author=self.peer_manager.get_own_peer_name(),
-                                   chain_version=self.chain_version, signing_function=self._sign_hash_with_private_key,
+                                   chain_version=self.chain_version, signing_function=self._sign_hash_with_private_key, jwt_encoding_function=self._encode_to_jwt_with_private_key,
                                    additional_info=additional_info)
         try:
             self.blocks.insert_one(block.as_dict())
@@ -92,17 +78,35 @@ class BlockManager(IBlockManager):
     def get_last_block(self):
         if self.blocks.count_documents({}) < 1:
             raise BlockNotFoundError("latest", "No blocks in the database.")
-        return Block.from_dict(self.blocks.find_one(sort=[('_id', -1)]))
+        block = self.blocks.find_one(sort=[('_id', -1)])
+        if block["_id"] == 0:
+            return GenesisBlock.from_dict(block)
+        return Block.from_dict(block)
 
     def get_all_blocks(self):
-        return [Block.from_dict(block) for block in self.blocks.find(sort=[('_id', 1)])] if self.blocks.count_documents({}) > 0 else []
+        return [GenesisBlock.from_dict(block) if block["_id"] == 0 else Block.from_dict(block) for block in self.blocks.find(sort=[('_id', 1)])] if self.blocks.count_documents({}) > 0 else []
 
     @require_authorized
     def _sign_hash_with_private_key(self, hash):
         encrypted_hash = SHA256.new(hash.encode('utf-8'))
-        signature = pss.new(self.signing_private_key).sign(encrypted_hash)
+        signature = pss.new(self.generating_private_key).sign(encrypted_hash)
         result = base64.b64encode(signature).decode()
         return result
+
+    @require_authorized
+    def _encode_to_jwt_with_private_key(self, data: dict[str, Any]):
+        return jwt.encode(payload=data, key=self.generating_private_key_str, algorithm="RS256", headers={"university": self.university_name})
+
+    def _find_key_for_university(self, university):
+        genesis_block = self.get_block_by_index(0)
+        try:
+            logger.info(
+                f"Found universities public key for {university}")
+            return genesis_block.keys[university]["public_key"]
+        except Exception as e:
+            logger.warning(
+                f"Tried accessing unexisting key for university: {university}. Exception is: {str(e)}")
+            return None
 
     def drop_all_blocks(self):
         self.blocks.delete_many({})
@@ -110,16 +114,23 @@ class BlockManager(IBlockManager):
     def get_chain_size(self):
         return self.blocks.count_documents({})
 
-    def get_block_by_index(self, index: int):
-        return Block.from_dict(self.blocks.find_one({"_id": index}))
+    def get_block_by_index(self, index: int) -> IBlock:
+        block = self.blocks.find_one({"_id": index})
+        if not block:
+            raise BlockNotFoundError(str(index))
+        if block["_id"] == 0:
+            return GenesisBlock.from_dict(block)
+        return Block.from_dict(block)
 
     def get_block_by_hash(self, hash: str):
         block = self.blocks.find_one({"hash": hash})
         if not block:
             raise BlockNotFoundError(hash)
+        if block["_id"] == 0:
+            return GenesisBlock.from_dict(block)
         return Block.from_dict(block)
 
-    def add_block(self, block: Block):
+    def add_block(self, block: IBlock):
         try:
             self.validate_block(block)
         except UnauthorizedBlockError as e:
@@ -129,8 +140,11 @@ class BlockManager(IBlockManager):
         return block
 
     def validate_block(self, block):
+        if block._id == 0:
+            # This is the genesis block - it's authenticity should be validated at the setup of the system.
+            return None
         previous_block = self.get_block_by_index(
-            block._id - 1) if block._id > 0 else None
+            block._id - 1)
         if previous_block is None and block._id != 0:
             raise UnauthorizedBlockError(
                 block, "Could not validate block, because previous block does not exist"
@@ -140,22 +154,25 @@ class BlockManager(IBlockManager):
             raise UnauthorizedBlockError(
                 block, "Could not validate block, because previous block hash does not match"
             )
-        author_peer = self.peer_manager.get_peer_by_nickname(
-            block.peer_author)
-        if author_peer is None:
+        author_key = self._find_key_for_university(block.university)
+        if author_key is None:
             raise UnauthorizedBlockError(
-                block, "Could not validate block, because author peer does not exist"
+                block, "Could not validate block, because university's key does not exist"
             )
         if block.hash != Block.calculate_merkle_root([previous_block.hash if previous_block else None, block._id, block.timestamp, block.diploma_type, block.pdf_hash, block.authors, block.authors_id, block.date_of_defense, block.title, block.language, block.discipline, block.is_defended, block.university, block.faculty, block.supervisor, block.reviewer, block.additional_info, block.peer_author, block.chain_version]):
             raise UnauthorizedBlockError(
                 block, "Could not validate block, because hash does not match - calculated hash does not match"
             )
-        public_key = RSA.import_key(author_peer.public_key)
+        public_key = RSA.import_key(author_key)
         verifier = pss.new(public_key)
-        if not verifier.verify(SHA256.new(block.hash.encode('utf-8')), base64.b64decode(block.signed_hash)):
+        try:
+            verifier.verify(SHA256.new(block.hash.encode('utf-8')),
+                            base64.b64decode(block.signed_hash))
+            return True
+        except Exception as e:
             raise UnauthorizedBlockError(
                 block, "Could not validate block, because hash signed (with author's key) does not match"
-            )
+            ) from e
 
     def remove_block(self, index):
         block = self.get_block_by_index(index)

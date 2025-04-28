@@ -24,11 +24,12 @@ max_tries = 20  # 2 minutes
 
 
 class NodeManager(INodeManager):
-    def __init__(self, nickname: str, port: int):
+    def __init__(self, nickname: str, port: int, private_signing_key: str):
         self.node: p2pd.P2PNode
         self.peer_manager: IPeerManager
         self.block_manager: IBlockManager
-        self.protocol_manager = ProtocolManager(self)
+        self.protocol_manager = ProtocolManager(
+            self, private_signing_key=private_signing_key)
         self.nickname = nickname
         self.port = port
 
@@ -81,7 +82,7 @@ class NodeManager(INodeManager):
             responses.append(
                 {"pipe": pipe, "node": peer, "chain_size": chain_size})
         if len(responses) == 0:
-            raise NoPeersAviableError()
+            raise NoPeersAvailableError()
         best_nodes = self.select_best_peers(responses)
         for best_node in best_nodes:
             logger.info(f"Connect to best node {best_node.nickname}")
@@ -145,29 +146,13 @@ class NodeManager(INodeManager):
         Returns peers that have the greatest chain size.  
         Results are sorted by 1. if_authorized and 2. randomly
         """
-        best_authorized = []
-        best_authorized_chain_size = 0
-        best_unathorized = []
-        best_unathorized_chain_size = 0
-        for response in responses:
-            if response["node"].is_authorized:
-                if best_authorized is None or response["chain_size"] > best_authorized_chain_size:
-                    best_authorized.append(response)
-                    best_authorized_chain_size = response["chain_size"]
-                elif response["chain_size"] == best_authorized_chain_size:
-                    best_authorized.append(response)
-            else:
-                if best_unathorized is None or response["chain_size"] > best_unathorized_chain_size:
-                    best_unathorized.append(response)
-                    best_unathorized_chain_size = response["chain_size"]
-                elif response["chain_size"] == best_unathorized_chain_size:
-                    best_unathorized.append(response)
-        best_authorized.sort(key=lambda x: random.random())
-        best_unathorized.sort(key=lambda x: random.random())
-        best_nodes = best_authorized + best_unathorized
-        if len(best_nodes) > 0:
-            return [node['node'] for node in best_nodes]
-        raise NoPeersAviableError()
+        peers_list = [[response['node'], response["chain_size"]]
+                      for response in responses]
+        peers_list.sort(
+            key=lambda x: (-x[0].is_authorized, -x[1], random.random()))
+        if len(peers_list) > 0:
+            return [peer[0] for peer in peers_list]
+        raise NoPeersAvailableError()
 
     @retry(
         stop=stop_after_attempt(max_tries),
@@ -193,7 +178,6 @@ class NodeManager(INodeManager):
         except Exception as e:
             logger.error(e)
         return node
-        
 
     async def change_node_nickname(self, nickname: str):
         try:
@@ -252,7 +236,7 @@ class NodeManager(INodeManager):
             responses.append(
                 {"pipe": pipe, "node": peer, "chain_size": chain_size})
         if len(responses) == 0:
-            raise NoPeersAviableError()
+            raise NoPeersAvailableError()
         best_peers_list = self.select_best_peers(responses)
         for peer in best_peers_list:
             logger.info(f"Connect to best node {peer.nickname}")
@@ -310,7 +294,7 @@ class NodeManager(INodeManager):
                         logger.error("Failed to get block from peer")
                         continue
                     if self.block_manager.compare_blocks(received_block, block):
-                        logger.info(f"SUCCESS!!!")
+                        logger.info(f"Block was added successfully!")
                         return True
                     else:
                         logger.error("Received block is not the same!")

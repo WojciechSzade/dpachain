@@ -1,6 +1,11 @@
 x-backend-base: &backend-base
   build:
     context: ./dpachain-api
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 20000
+        hard: 40000
   depends_on:
     - dpachain-db2
   environment:
@@ -27,6 +32,9 @@ services:
     container_name: dpachain-api2
     env_file:
       - ./dpachain-api/.env2
+    environment:
+      - PORT=8001
+      - ENV_FILE=.env2
     image: dpachain-api
     restart: unless-stopped
 

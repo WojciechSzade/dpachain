@@ -2,14 +2,16 @@ from functools import wraps
 import logging
 import json
 from Cryptodome.PublicKey import RSA
-from Cryptodome.Signature import PKCS1_v1_5
 from Cryptodome.Hash import SHA256
+from Cryptodome.Signature import pss
 import base64
+import asyncio
 
 from src.block.interfaces import IBlockManager
-from src.block.models import Block
+from src.block.models import Block, GenesisBlock
 from src.node.errors import *
 from src.peer.interfaces import IPeerManager
+from src.utils.utils import normalize_pem
 
 from src.peer.models import PeerStatus
 
@@ -18,10 +20,11 @@ logger = logging.getLogger(__name__)
 
 
 class ProtocolManager:
-    def __init__(self, node_manager):
+    def __init__(self, node_manager, private_signing_key):
         self.block_manager = None
         self.peer_manager = None
         self.node_manager = node_manager
+        self.private_signing_key = RSA.import_key(private_signing_key)
 
     def set_block_manager(self, block_manager: IBlockManager):
         self.block_manager = block_manager
@@ -52,7 +55,7 @@ class ProtocolManager:
                 logger.error(e)
                 raise e
             logger.info(
-                f"RECEIVED MESSAGE: protocol: {protocol}, author: {author}, payload: {payload}")
+                f"RECEIVED MESSAGE: protocol: {protocol}, author: {author}, payload: {payload}, signature: {signature}")
             return msg, protocol, author, payload, signature
         except Exception as base:
             e = InvalidMessageReceivedError(msg)
@@ -78,13 +81,19 @@ class ProtocolManager:
         canon = json.dumps(raw_data, separators=(',', ':'), sort_keys=True)
         hobj = SHA256.new(canon.encode('utf-8'))
         public_key = RSA.import_key(public_key)
-        verifier = PKCS1_v1_5.new(public_key)
-        return verifier.verify(hobj, base64.b64decode(signature))
+        verifier = pss.new(public_key)
+        try:
+            verifier.verify(hobj, base64.b64decode(signature))
+            return True
+        except (ValueError, TypeError):
+            return False
 
     async def add_peer_protocole_support(self, msg, client_tup, pipe):
         # This try statement is used to log exceptions,
         # as this method exits silenty if it runs into one
         try:
+            logger.info(f"{client_tup}, {pipe.get_client_tup()}, {pipe.sock}")
+            await asyncio.sleep(0.2)
             parsed = self.parse_message(msg)
             if parsed is None:
                 return
@@ -99,44 +108,42 @@ class ProtocolManager:
                 case 'ask_chain_size':
                     logger.info(
                         f"Received ask_chain_size from {author}, handling.")
-                    return await self.handle_ask_chain_size(pipe)
+                    await self.handle_ask_chain_size(pipe)
                 case 'response_chain_size':
                     logger.info(
                         f"Received response_chain_size from {author}, {payload} - this should be currently handled in the request.")
-                    return
                 case 'ask_compare_blockchain':
                     logger.info(
                         f"Received ask_compare_blockchain from {author}, handling.")
-                    return await self.handle_compare_blockchain(pipe)
+                    await self.handle_compare_blockchain(pipe)
                 case 'response_compare_blockchain':
                     logger.info(
                         f"Received response_compare_blockchain from {author}, {payload} - this should be currently handled in the request.")
-                    return
                 case 'ask_block':
                     logger.info(
                         f"Received ask_block from {author}, handling.")
-                    return await self.handle_ask_block(pipe, payload)
+                    await self.handle_ask_block(pipe, payload)
                 case 'response_block':
                     logger.info(
                         f"Received response_block from {author}, {payload} - this should be currently handled in the request.")
-                    return
                 case 'new_peer':
                     logger.info(
                         f"Received new_peer from {author}, handling.")
-                    return await self.handle_new_peer(pipe, payload)
+                    await self.handle_new_peer(pipe, payload)
                 case 'present_self':
                     logger.info(
                         f"Received present_self from {author}, handling.")
-                    return await self.present_self(pipe)
+                    await self.present_self(pipe)
                 case 'ask_sync_chain':
                     logger.info(
                         f"Received ask_sync_chain from {author}, handling.")
-                    return await self.handle_ask_sync(pipe)
+                    await self.handle_ask_sync(pipe)
 
                 case _:
                     logger.error(f"Unknown protocol {protocol} from {author}")
-                    return
+            await pipe.close()
         except Exception as e:
+            await pipe.close()
             logger.error(e)
             raise e
 
@@ -147,45 +154,48 @@ class ProtocolManager:
         logger.error(str(e))
         raise e
 
-    def sign_message(self, serialized_msg: str) -> str:
-        """Sign a pre-serialized (canonical) JSON string."""
-        hash_obj = SHA256.new(serialized_msg.encode('utf-8'))
-        signature = PKCS1_v1_5.new(
-            self.block_manager.signing_private_key).sign(hash_obj)
+    def sign_message(self, data: dict) -> str:
+        """Sign a dictionary by first canonicalizing it."""
+        canon = json.dumps(data, separators=(',', ':'), sort_keys=True)
+        encrypted_hash = SHA256.new(canon.encode('utf-8'))
+        signature = pss.new(self.private_signing_key).sign(encrypted_hash)
         return base64.b64encode(signature).decode()
 
     async def send_message(self, pipe, msg, wait_response=False):
         """Send message to peer"""
         protocol = msg["protocol"]
 
-        canon = json.dumps(msg, separators=(',', ':'), sort_keys=True)
         msg["signature"] = self.sign_message(
-            canon) if protocol != 'new_peer' else None
+            msg) if protocol != 'new_peer' else None
         msg = json.dumps(msg).encode('utf-8')
 
         logger.info(f"SEND_MESSAGE {msg}")
         msg = b"DPACHAIN" + msg
+        if not wait_response:
+            await pipe.send(msg)
+            await pipe.close()
+            return
         await pipe.send(msg)
-        if wait_response:
-            res = await pipe.recv(timeout=20)
-            if res is None:
-                logger.info(
-                    f"Awaiting timedout.")
-                e = NoResponseReceivedError(pipe, protocol)
-                raise e
-            response = {}
-            raw_data, response["protocol"], response["author"], response["payload"], response["signature"] = self.parse_message(
-                res)
-            author_peer = self.get_author_peer(
-                response["author"], response["protocol"])
-            signed_correct = self.verify_signature(
-                raw_data, author_peer.public_key, response["signature"]) if response["signature"] else False
-            if not signed_correct:
-                e = InvalidSignatureError(author_peer.nickname)
-                logger.error(str(e))
-                raise e
-
-            return response["protocol"], response["author"], response["payload"]
+        res = await pipe.recv(timeout=20)
+        if res is None:
+            logger.info(
+                f"Awaiting timedout.")
+            await pipe.close()
+            e = NoResponseReceivedError(pipe, protocol)
+            raise e
+        await pipe.close()
+        response = {}
+        raw_data, response["protocol"], response["author"], response["payload"], response["signature"] = self.parse_message(
+            res)
+        author_peer = self.get_author_peer(
+            response["author"], response["protocol"])
+        signed_correct = self.verify_signature(
+            raw_data, author_peer.public_key, response["signature"]) if response["signature"] else False
+        if not signed_correct:
+            e = InvalidSignatureError(author_peer.nickname)
+            logger.error(str(e))
+            raise e
+        return response["protocol"], response["author"], response["payload"]
 
     async def request_chain_size(self, pipe):
         """Send request to get chain size from peer"""
@@ -213,7 +223,6 @@ class ProtocolManager:
             "payload": {"chain_size": chain_size}
         }
         await self.send_message(pipe, msg)
-        await pipe.close()
         return
 
     async def request_compare_blockchain(self, pipe):
@@ -248,7 +257,6 @@ class ProtocolManager:
             "payload": {"chain_size": own_chain_size, "last_block_hash": own_last_block_hash}
         }
         await self.send_message(pipe, msg)
-        await pipe.close()
         return
 
     async def request_block(self, pipe, block_index):
@@ -264,11 +272,14 @@ class ProtocolManager:
             block = response.get("payload").get("block")
             if block is not None:
                 try:
-                    block = Block.from_dict(block)
+                    if block["_id"] == 0:
+                        block = GenesisBlock.from_dict(block)
+                    else:
+                        block = Block.from_dict(block)
                 except Exception as base:
                     e = InvalidResponseReceivedError(
                         pipe, response["protocol"], response["payload"])
-                    logger.error(str(e))
+                    logger.error(str(e) + " from " + base)
                     raise e from base
             return block
         e = InvalidResponseReceivedError(
@@ -290,7 +301,6 @@ class ProtocolManager:
             "payload": {"block": block.as_dict()}
         }
         await self.send_message(pipe, msg)
-        await pipe.close()
         return
 
     async def present_self(self, pipe):
@@ -305,7 +315,6 @@ class ProtocolManager:
             }
         }
         await self.send_message(pipe, msg)
-        await pipe.close()
         return
 
     async def handle_new_peer(self, pipe, payload):
@@ -319,7 +328,6 @@ class ProtocolManager:
             return
         self.peer_manager.add_new_peer(
             new_peer_nickname,  new_peer_public_key, new_peer_adress, False)
-        await pipe.close()
         return
 
     async def ask_to_sync(self, pipe):
@@ -330,7 +338,6 @@ class ProtocolManager:
             "payload": None
         }
         await self.send_message(pipe, msg)
-        await pipe.close()
         return
 
     async def handle_ask_sync(self, pipe):

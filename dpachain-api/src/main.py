@@ -1,33 +1,32 @@
-from abc import ABC
-from contextlib import asynccontextmanager
-from typing import Any
+from src.core.db import init_db
+from src.node.service import NodeService
+from src.node.manager import NodeManager
+from src.node.interfaces import INodeManager, INodeService
+from src.block.service import BlockService
+from src.block.manager import BlockManager
+from src.block.interfaces import IBlockManager, IBlockService
+from src.peer.service import PeerService
+from src.peer.manager import PeerManager
+from src.peer.interfaces import IPeerManager, IPeerService
+from src.api.routers import router
+from src.core.config import settings
 from fastapi import FastAPI
+from typing import Any
+from contextlib import asynccontextmanager
 import uvicorn
 import asyncio
-
-from src.core.config import settings
-from src.api.routers import router
-from src.peer.interfaces import IPeerManager, IPeerService
-from src.peer.manager import PeerManager
-from src.peer.service import PeerService
-from src.block.interfaces import IBlockManager, IBlockService
-from src.block.manager import BlockManager
-from src.block.service import BlockService
-from src.node.interfaces import INodeManager, INodeService
-from src.node.manager import NodeManager
-from src.node.service import NodeService
-from src.core.db import init_db
+import uvloop
 
 
 def configure_dependencies() -> dict[str, Any]:
     client_db = init_db(mongodb_url=settings.MONGODB_URL)
     db = client_db.blockchain
     block_manager: IBlockManager = BlockManager(
-        database=db, network_id=settings.NETWORK_ID, chain_version=settings.CHAIN_VERSION, authorized=settings.AUTHORIZED, signing_private_key=settings.SIGNING_PRIVATE_KEY)
+        database=db, network_id=settings.NETWORK_ID, chain_version=settings.CHAIN_VERSION, authorized=settings.AUTHORIZED, generating_private_key=settings.GENERATING_PRIVATE_KEY, university_name=settings.UNIVERSITY_NAME)
     peer_manager: IPeerManager = PeerManager(
-        client_db=db, authorized=settings.AUTHORIZED, public_key=settings.SIGNING_PUBLIC_KEY)
+        client_db=db, authorized=settings.AUTHORIZED, signing_public_key=settings.SIGNING_PUBLIC_KEY)
     node_manager: INodeManager = NodeManager(
-        nickname=settings.HOST_NODE_NAME, port=settings.P2P_PORT)
+        nickname=settings.HOST_NODE_NAME, port=settings.P2P_PORT, private_signing_key=settings.SIGNING_PRIVATE_KEY)
 
     block_manager.set_peer_manager(peer_manager=peer_manager)
     node_manager.set_block_manager(block_manager=block_manager)
@@ -65,7 +64,8 @@ app.include_router(router)
 
 
 async def entry():
-    config = uvicorn.Config(app, host=settings.HOST, port=settings.PORT)
+    config = uvicorn.Config(app, host=settings.HOST,
+                            port=settings.PORT, loop=uvloop.EventLoopPolicy())
     server = uvicorn.Server(config)
 
     fastapi_serv_task = asyncio.ensure_future(server.serve())

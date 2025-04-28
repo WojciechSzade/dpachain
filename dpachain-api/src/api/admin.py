@@ -10,7 +10,6 @@ from src.block.errors import BlockError
 from src.block.interfaces import IBlockService
 from src.node.errors import NodeError
 from src.node.interfaces import INodeService
-from src.peer.errors import PeerError
 from src.peer.interfaces import IPeerService
 from src.utils.dependencies import get_block_service, get_node_service, get_peer_service
 from src.api.utils import handle_error
@@ -26,7 +25,7 @@ def add_new_authorized_peer(nickname: str, public_key: str, adress: Optional[str
     try:
         res = peer_service.add_new_peer(nickname, public_key, adress, True)
         return {"message": res[0], "peer": res[1]}
-    except PeerError as e:
+    except Exception as e:
         return handle_error(e)
 
 
@@ -35,22 +34,25 @@ def add_new_peer(nickname: str, public_key: str, adress: Optional[str] = None, p
     try:
         res = peer_service.add_new_peer(nickname, public_key, adress, False)
         return {"message": res[0], "peer": res[1]}
-    except PeerError as e:
+    except Exception as e:
         return handle_error(e)
 
 
 @router.get("/admin/get_peers_list")
 def get_peers_list(peer_service: IPeerService = Depends(get_peer_service)):
-    return {
-        "peers": peer_service.get_peers_list()
-    }
+    try:
+        return {
+            "peers": peer_service.get_peers_list()
+        }
+    except Exception as e:
+        return handle_error(e)
 
 
 @router.post("/admin/remove_peer")
 def remove_peer(nickname: str, peer_service: IPeerService = Depends(get_peer_service)):
     try:
         return {"message": peer_service.remove_peer(nickname)}
-    except PeerError as e:
+    except Exception as e:
         return handle_error(e)
 
 
@@ -58,7 +60,7 @@ def remove_peer(nickname: str, peer_service: IPeerService = Depends(get_peer_ser
 def ban_peer(nickname: str, peer_service: IPeerService = Depends(get_peer_service)):
     try:
         return {"message": peer_service.ban_peer(nickname)}
-    except PeerError as e:
+    except Exception as e:
         return handle_error(e)
 
 
@@ -66,7 +68,7 @@ def ban_peer(nickname: str, peer_service: IPeerService = Depends(get_peer_servic
 def unban_peer(nickname: str, peer_service: IPeerService = Depends(get_peer_service)):
     try:
         return {"message": peer_service.unban_peer(nickname)}
-    except PeerError as e:
+    except Exception as e:
         return handle_error(e)
 
 
@@ -75,7 +77,7 @@ async def sync_chain(node_service: INodeService = Depends(get_node_service)):
     logger.info("Syncing chain...")
     try:
         return await node_service.sync_chain()
-    except (PeerError, NodeError, BlockError) as e:
+    except (Exception, NodeError, BlockError) as e:
         return handle_error(e)
 
 
@@ -85,7 +87,7 @@ async def present_to_peer(nickname: str, node_service: INodeService = Depends(ge
         await node_service.present_to_peer(nickname)
         return {"message": "Node has been presented to peer!"}
     except Exception as e:
-        return {"message": f"Failed to present node to peer: {e}"}
+        return handle_error(e)
 
 
 @router.post("/admin/ask_peer_to_sync")

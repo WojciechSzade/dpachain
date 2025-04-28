@@ -1,17 +1,20 @@
 import base64
+import json
 import logging
 import hashlib
 import datetime
+import os
 from typing import Any, Callable, Optional
 
 from src.block.errors import *
+from src.block.interfaces import IBlock
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class Block:
+class Block(IBlock):
     def __init__(
             self, previous_block: str, _id: int, timestamp: float,
             diploma_type: str, pdf_hash: str, authors: (list[str] | str),
@@ -19,7 +22,7 @@ class Block:
             title: str, language: str, discipline: str, is_defended: int,
             university: str, faculty: str, supervisor: (list[str] | str),
             reviewer: (list[str] | str), additional_info: Optional[str],
-            peer_author: str, chain_version: str, hash: str, signed_hash: str):
+            peer_author: str, chain_version: str, hash: str, signed_hash: str, jwt_token: str):
         self.previous_block = previous_block
         self._id = _id
         self.timestamp = timestamp
@@ -41,6 +44,7 @@ class Block:
         self.chain_version = chain_version
         self.hash = hash
         self.signed_hash = signed_hash
+        self.jwt_token = jwt_token
 
     @classmethod
     def create_block(
@@ -48,7 +52,7 @@ class Block:
             authors_id: (list[str] | str), title: str, language: str, discipline: str, is_defended: int,
             date_of_defense: datetime.date, university: str, faculty: str, supervisor: (list[str] | str),
             reviewer: (list[str] | str), peer_author: str, chain_version: str, signing_function: Callable[[str], str],
-            additional_info: Optional[str] = None):
+            jwt_encoding_function: Callable[[dict], str], additional_info: Optional[str] = None):
         timestamp = datetime.datetime.now().timestamp()
         date_of_defense = datetime.datetime.combine(
             date_of_defense, datetime.datetime.min.time())
@@ -56,12 +60,36 @@ class Block:
         hash = cls.calculate_merkle_root([previous_block, _id, timestamp, diploma_type, pdf_hash, authors, authors_id,
                                           date_of_defense, title, language, discipline, is_defended, university, faculty,
                                           supervisor, reviewer, additional_info, peer_author, chain_version])
+        signed_hash = signing_function(hash)
+        jwt_token = jwt_encoding_function({
+            "previous_block": previous_block,
+            "_id": _id,
+            "timestamp": timestamp,
+            "diploma_type": diploma_type,
+            "pdf_hash": pdf_hash,
+            "authors": authors,
+            "authors_id": authors_id,
+            "date_of_defense": date_of_defense.isoformat(),
+            "title": title,
+            "language": language,
+            "discipline": discipline,
+            "is_defended": is_defended,
+            "university": university,
+            "faculty": faculty,
+            "supervisor": supervisor,
+            "reviewer": reviewer,
+            "additional_info": additional_info,
+            "peer_author": peer_author,
+            "chain_version": chain_version,
+            "hash": hash,
+            "signed_hash": signed_hash
+        })
         return cls(
             previous_block=previous_block, _id=_id, timestamp=timestamp, diploma_type=diploma_type, pdf_hash=pdf_hash,
             authors=authors, authors_id=authors_id, date_of_defense=date_of_defense, title=title, language=language,
             discipline=discipline, is_defended=is_defended, university=university, faculty=faculty, supervisor=supervisor,
             reviewer=reviewer, additional_info=additional_info, peer_author=peer_author, chain_version=chain_version, hash=hash,
-            signed_hash=signing_function(hash))
+            signed_hash=signed_hash, jwt_token=jwt_token)
 
     @staticmethod
     def calculate_merkle_root(data):
@@ -70,6 +98,8 @@ class Block:
 
             hash_string = hashlib.sha256(sum).hexdigest()
             return hash_string
+
+        data = sorted(data, key=lambda x: str(x))
 
         if len(data) == 1:
             return data[0]
@@ -110,7 +140,8 @@ class Block:
             "peer_author": self.peer_author,
             "chain_version": self.chain_version,
             "hash": self.hash,
-            "signed_hash": self.signed_hash
+            "signed_hash": self.signed_hash,
+            "jws_token": self.jwt_token
         }
 
     @classmethod
@@ -138,4 +169,51 @@ class Block:
             data['chain_version'],
             data['hash'],
             data['signed_hash'],
+            data['jws_token'],
+        )
+
+
+class GenesisBlock(IBlock):
+    def __init__(self, _id, keys, hash, signed_hash, jwt_token):
+        self._id = _id
+        self.keys = keys
+        self.hash = hash
+        self.signed_hash = hash
+        self.jwt_token = jwt_token
+
+    @classmethod
+    def create_block(cls, keys_file: str, signing_function: Callable[[str], str], jwt_encoding_function: Callable[[dict], str]):
+        keys = {}
+        with open("signing_keys/" + keys_file + ".json", "r") as file:
+            keys = json.load(file)
+        keys_as_list = [x for pair in keys.items() for x in pair]
+        hash = Block.calculate_merkle_root(keys)
+        signed_hash = signing_function(hash)
+        jwt_token = jwt_encoding_function(
+            {**keys, **{"signed_hash": signed_hash}})
+        return cls(
+            _id=0,
+            keys=keys,
+            hash=hash,
+            signed_hash=signed_hash,
+            jwt_token=jwt_token
+        )
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "_id": self._id,
+            "keys": self.keys,
+            "hash": self.hash,
+            "signed_hash": self.signed_hash,
+            "jwt_token": self.jwt_token
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]):
+        return cls(
+            _id=data["_id"],
+            keys=data["keys"],
+            hash=data["hash"],
+            signed_hash=data["signed_hash"],
+            jwt_token=data["jwt_token"]
         )

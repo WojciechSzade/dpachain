@@ -7,18 +7,19 @@ from src.peer.models import Peer, PeerStatus
 from src.core.db import init_db
 from src.peer.errors import *
 from src.peer.interfaces import IPeerManager
+from src.utils.utils import normalize_pem
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 class PeerManager(IPeerManager):
-    def __init__(self, client_db, authorized: bool, public_key: str):
+    def __init__(self, client_db, authorized: bool, signing_public_key: str):
         self.db = client_db.blockchain
         self.peers = self.db.peers
         self.own_peer = None
         self.authorized = authorized
-        self.public_key = public_key
+        self.signing_public_key = signing_public_key
 
     def get_peers_list(self) -> list[Peer]:
         peers = self.peers.find()
@@ -52,6 +53,7 @@ class PeerManager(IPeerManager):
     def add_new_peer(self, nickname: str, public_key: str, adress: Optional[str] = None, is_authorized=False, status=PeerStatus.UNKNOWN):
         if public_key is None:
             raise NoPublicKeyForPeerError(nickname)
+        public_key = normalize_pem(public_key)
         if self.find_peer_by_nickname(nickname) is not None:
             raise PeerAlreadyExistsError(nickname)
         new_peer = Peer(nickname, public_key, adress, status, is_authorized)
@@ -95,14 +97,14 @@ class PeerManager(IPeerManager):
                 for invalid_own_peer in own_peers_in_db:
                     self.remove_peer(invalid_own_peer, remove_own=True)
         self.own_peer = self.add_new_peer(
-            nickname, self.public_key, adress, self.authorized, PeerStatus.OWN)
+            nickname, self.signing_public_key, adress, self.authorized, PeerStatus.OWN)
 
     def change_own_peer_nickname(self, nickname, adress=None):
         if self.own_peer is None:
             return self._set_own_peer(nickname, adress)
         self.remove_peer(self.own_peer, remove_own=True)
         self.own_peer = self.add_new_peer(
-            nickname, self.public_key, adress, self.authorized, PeerStatus.OWN)
+            nickname, self.signing_public_key, adress, self.authorized, PeerStatus.OWN)
 
     def get_own_peer_name(self) -> str:
         if self.own_peer is None:
@@ -117,7 +119,7 @@ class PeerManager(IPeerManager):
     def get_own_peer_public_key(self) -> str:
         if self.own_peer is None:
             raise OwnPeerWasNotSetError()
-        return self.public_key
+        return self.signing_public_key
 
     def get_authorized_peers(self) -> list[Peer]:
         return [peer for peer in self.get_peers_list() if peer.is_authorized]

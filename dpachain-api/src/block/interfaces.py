@@ -1,8 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 import datetime
-from typing import TYPE_CHECKING
-from src.block.models import Block
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from src.peer.interfaces import IPeerManager
@@ -21,7 +20,7 @@ class IBlockManager(ABC):
         ...
 
     @abstractmethod
-    def generate_genesis_block(self):
+    def generate_genesis_block(self, keys_file):
         """
         Creates the genesis block - the first block.
         This is a one time only action, and should not be executed
@@ -76,7 +75,7 @@ class IBlockManager(ABC):
         ...
 
     @abstractmethod
-    def add_block(self, block: Block):
+    def add_block(self, block: IBlock):
         """Adds the passed block to the chain - if it's is valid"""
         ...
 
@@ -123,4 +122,25 @@ class IBlockService(ABC):
 
     @abstractmethod
     def calculate_pdf_hash(self, pdf_file):
+        ...
+
+
+class IBlock(ABC):
+    _id: int
+    hash: str
+    signed_hash: str
+    jwt_token: str
+    
+    @classmethod
+    @abstractmethod
+    def create_block(cls, *args):
+        ...
+
+    @abstractmethod
+    def as_dict(self) -> dict[str, Any]:
+        ...
+
+    @classmethod
+    @abstractmethod
+    def from_dict(cls, data: dict[str, Any]) -> dict[str, Any]:
         ...

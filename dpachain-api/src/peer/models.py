@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Any
+from src.utils.utils import normalize_pem
 
 
 class PeerStatus(Enum):
@@ -35,7 +36,7 @@ class Peer:
     def from_dict(cls, data: dict[str, Any]):
         return cls(
             data["nickname"],
-            data["public_key"],
+            normalize_pem(data["public_key"]),
             data["adress"],
             PeerStatus(data["status"]),
             data["is_authorized"]
