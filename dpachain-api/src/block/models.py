@@ -146,7 +146,6 @@ class Block(IBlock):
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
-        logger.info(f"Creating class from dict for {data['title']}")
         return cls(
             data['previous_block'],
             data['_id'],

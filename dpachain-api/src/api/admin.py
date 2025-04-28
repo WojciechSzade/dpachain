@@ -77,7 +77,7 @@ async def sync_chain(node_service: INodeService = Depends(get_node_service)):
     logger.info("Syncing chain...")
     try:
         return await node_service.sync_chain()
-    except (Exception, NodeError, BlockError) as e:
+    except Exception as e:
         return handle_error(e)
 
 

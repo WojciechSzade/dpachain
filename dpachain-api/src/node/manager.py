@@ -4,7 +4,7 @@ import datetime
 import logging
 import random
 import p2pd
-from tenacity import after_log, before_log, before_sleep_log, retry, stop_after_attempt, retry_if_result
+from tenacity import after_log, before_log, before_sleep_log, retry, stop_after_attempt, retry_if_result, wait_exponential, wait_fixed
 
 from src.node.interfaces import INodeManager
 from src.block.interfaces import IBlockManager
@@ -12,6 +12,7 @@ from src.peer.interfaces import IPeerManager
 from src.block.models import Block
 from src.node.protocols import ProtocolManager
 from src.node.errors import *
+from src.block.errors import UnauthorizedBlockError
 from src.peer.errors import PeerNotFoundError
 from src.peer.models import Peer, PeerStatus
 from src.peer.manager import PeerManager
@@ -65,6 +66,19 @@ class NodeManager(INodeManager):
             logger.error(f"Failed to set node name to {nickname}")
             raise e
 
+    @retry(
+        stop=stop_after_attempt(max_tries),
+        before=before_log(logger, logging.INFO),
+        after=after_log(logger, logging.WARN),
+        before_sleep=before_sleep_log(logger, logging.INFO),
+        reraise=True
+    )
+    async def _receive_block_from_peer(self, peer, i):
+        pipe = await self.connect_to_peer(peer)
+        block = await self.protocol_manager.request_block(pipe, i)
+        logger.info(f"Received block {block}")
+        return block
+
     async def sync_chain(self):
         logger.info("Starting sync chain")
         peer_list = self.peer_manager.get_valid_peers_to_connect()
@@ -112,34 +126,16 @@ class NodeManager(INodeManager):
                     "Chain size is the same, but last block hash is different")
                 return "Chain size is the same, but last block hash is different"
             logger.info("Chain size is different - syncing")
-            fail_counter = 0
-            FAIL_LIMIT = 10
             for i in range(own_chain_size, chain_size):
+                block = await self._receive_block_from_peer(peer, i)
                 try:
-                    pipe = await self.connect_to_peer(peer)
-                except PeerUnavailableError as e:
-                    fail_counter += 1
-                    if fail_counter > FAIL_LIMIT:
-                        raise e
-                    i -= 1
-                    continue
-                try:
-                    block = await self.protocol_manager.request_block(pipe, i)
-                except NodeError:
-                    fail_counter += 1
-                    if fail_counter > FAIL_LIMIT:
-                        raise e
-                    i -= 1
-                    continue
-                logger.info(f"Received block {block}")
-                if block is None:
-                    fail_counter += 1
-                    if fail_counter > FAIL_LIMIT:
-                        raise e
-                    i -= 1
-                    continue
-                self.block_manager.add_block(block)
-        return "Chain has been synced!"
+                    self.block_manager.add_block(block)
+                except UnauthorizedBlockError as e:
+                    logger.error(str(e))
+                    break
+            else:
+                return "Chain has been synced."
+        return "Could not sync the chain."
 
     def select_best_peers(self, responses):
         """
@@ -158,7 +154,8 @@ class NodeManager(INodeManager):
         stop=stop_after_attempt(max_tries),
         before=before_log(logger, logging.INFO),
         after=after_log(logger, logging.WARN),
-        before_sleep=before_sleep_log(logger, logging.INFO)
+        before_sleep=before_sleep_log(logger, logging.INFO),
+        reraise=True
     )
     async def __create_node(self, port):
         try:
@@ -206,7 +203,8 @@ class NodeManager(INodeManager):
         stop=stop_after_attempt(max_tries),
         before=before_log(logger, logging.INFO),
         after=after_log(logger, logging.WARN),
-        before_sleep=before_sleep_log(logger, logging.INFO)
+        before_sleep=before_sleep_log(logger, logging.INFO),
+        reraise=True
     )
     async def generate_new_block(
             self, diploma_type: str, pdf_file: bytes, authors: (list[str] | str),
@@ -249,7 +247,7 @@ class NodeManager(INodeManager):
         if is_propagated:
             return block
         self.block_manager.remove_block(block._id)
-        return "Failed to add block to blockchain"
+        raise FailedToAddBlockToChain()
 
     async def connect_to_peer(self, peer: Peer):
         logger.info(f"Connecting to {peer.nickname}")
@@ -262,41 +260,35 @@ class NodeManager(INodeManager):
             raise PeerUnavailableError(peer)
         return pipe
 
+    @retry(
+        stop=stop_after_attempt(max_tries),
+        before=before_log(logger, logging.INFO),
+        after=after_log(logger, logging.WARN),
+        before_sleep=before_sleep_log(logger, logging.INFO),
+        wait=wait_fixed(5),
+        reraise=True
+    )
     async def check_if_block_was_added_sucessfully(self, block: Block, best_peers_list):
-        for i in range(max_tries):
-            await sleep(10)
-            for peer in best_peers_list:
-                try:
-                    pipe = await self.connect_to_peer(peer)
-                except PeerUnavailableError:
-                    continue
-                try:
-                    res = await self.protocol_manager.request_compare_blockchain(pipe)
-                except NodeError as e:
-                    logger.error(f"Failed to get response from peer: {str(e)}")
-                    continue
-                own_chain_size = self.block_manager.get_chain_size()
-                own_last_block_hash = self.block_manager.get_last_block(
-                ).hash if own_chain_size > 0 else None
-                chain_size, last_block_hash = res
-                logger.info(
-                    f"Own chain size = {chain_size}, Own last block hash = {last_block_hash}")
-                logger.info(
-                    f"Received peer chain size = {chain_size}, Peer last block hash = {last_block_hash}")
-                if chain_size >= own_chain_size:
-                    pipe = await self.node.connect(peer.nickname)
-                    if pipe is None:
-                        logger.info(
-                            f"Failed to connect to {peer.nickname} with previous state {peer.get_state}")
-                    received_block = await self.protocol_manager.request_block(
-                        pipe, own_chain_size - 1)
-                    if received_block is None:
-                        logger.error("Failed to get block from peer")
-                        continue
-                    if self.block_manager.compare_blocks(received_block, block):
-                        logger.info(f"Block was added successfully!")
-                        return True
-                    else:
-                        logger.error("Received block is not the same!")
-                        continue
-        return False
+        for peer in best_peers_list:
+            pipe = await self.connect_to_peer(peer)
+            res = await self.protocol_manager.request_compare_blockchain(pipe)
+            own_chain_size = self.block_manager.get_chain_size()
+            own_last_block_hash = self.block_manager.get_last_block(
+            ).hash if own_chain_size > 0 else None
+            chain_size, last_block_hash = res
+            logger.info(
+                f"Own chain size = {own_chain_size}, Own last block hash = {own_last_block_hash}")
+            logger.info(
+                f"Received peer chain size = {chain_size}, Peer last block hash = {last_block_hash}")
+            if chain_size >= own_chain_size:
+                pipe = await self.connect_to_peer(peer)
+                received_block = await self.protocol_manager.request_block(
+                    pipe, own_chain_size - 1)
+                if self.block_manager.compare_blocks(received_block, block):
+                    logger.info(f"Block was added successfully.")
+                    return True
+                else:
+                    logger.error("Received block is not the same!")
+                    raise InvalidMessageReceivedError(
+                        "Received block is not the same!")
+        raise FailedToAddBlockToChain()

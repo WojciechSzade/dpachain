@@ -54,8 +54,8 @@ class ProtocolManager:
                 e = InvalidMessageReceivedError(msg)
                 logger.error(e)
                 raise e
-            logger.info(
-                f"RECEIVED MESSAGE: protocol: {protocol}, author: {author}, payload: {payload}, signature: {signature}")
+            # logger.info(
+            #     f"RECEIVED MESSAGE: protocol: {protocol}, author: {author}, payload: {payload}, signature: {signature}")
             return msg, protocol, author, payload, signature
         except Exception as base:
             e = InvalidMessageReceivedError(msg)
@@ -92,8 +92,8 @@ class ProtocolManager:
         # This try statement is used to log exceptions,
         # as this method exits silenty if it runs into one
         try:
-            logger.info(f"{client_tup}, {pipe.get_client_tup()}, {pipe.sock}")
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(0.5)
+            # this sleep is so the response message is not missed by the asking node
             parsed = self.parse_message(msg)
             if parsed is None:
                 return

@@ -1,8 +1,9 @@
+// create_diploma.js
 const express = require('express');
 const { URL } = require('url');
 const { Blob } = require('buffer');
 const multer = require('multer');
-const parseDiploma = require('../../utils/parseDiploma');
+const { parseDiplomaDetails } = require('../../utils/parseDiploma');
 const { API_BASE_URL } = require('../../config');
 
 const router = express.Router();
@@ -75,7 +76,7 @@ router.post('/create_diploma', upload.single('pdf_file'), async (req, res) => {
       });
     }
 
-    const block = parseDiploma(data.block);
+    const block = parseDiplomaDetails(data.block);
     res.render('staff/create_diploma', {
       title: 'Create diploma',
       error: null,

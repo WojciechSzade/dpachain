@@ -57,3 +57,9 @@ class InvalidSignatureError(NodeError):
     def __init__(self, peer_nickname):
         self.peer_nickname = peer_nickname
         super().__init__(f"Invalid signature from peer {self.peer_nickname}.")
+
+class FailedToAddBlockToChain(NodeError):
+    """Raised when couldn't add the block to chain and no other exception was raised"""
+    
+    def __init__(self):
+        super().__init__("Failed to add the block to chain.")
