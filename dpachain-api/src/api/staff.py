@@ -36,7 +36,7 @@ async def generate_next_block(
             date_of_defense=date_of_defense, university=university, faculty=faculty, supervisor=supervisor,
             reviewer=reviewer, additional_info=None)
         return {"message": res[0], "block": res[1]}
-    except (PeerError, NodeError, BlockError) as e:
+    except Exception as e:
         return handle_error(e)
 
 
@@ -44,5 +44,5 @@ async def generate_next_block(
 def get_all_blocks(block_service: BlockService = Depends(get_block_service)):
     try:
         return {"blocks": block_service.get_all_blocks()}
-    except BlockError as e:
+    except Exception as e:
         return handle_error(e)

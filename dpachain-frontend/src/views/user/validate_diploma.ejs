@@ -8,69 +8,124 @@
     <button type="submit" class="btn btn-primary">Validate</button>
   </form>
 
-  <% if (typeof error !== 'undefined') { %>
-    <div class="alert alert-danger mt-4"><%= error.msg %></div>
-  <% } %>
-
-  <% if (typeof blockSummary !== 'undefined') { %>
-    <div class="card mt-4">
-      <div class="card-body">
-        <h4 class="card-title">
-          Diploma Details 
-          <span class="badge bg-success ms-2">Valid ✓</span>
-        </h4>
-
-        <div class="row mt-3">
-          <% blockSummary.forEach(item => { %>
-            <div class="col-md-6 mb-2"><strong><%= item.label %>:</strong> <%= item.value %></div>
-          <% }); %>
-        </div>
-
-        <div class="mt-4">
-          <label for="jwt_token" class="form-label"><strong>JWT Token</strong></label>
-          <div class="input-group">
-            <input type="text" readonly class="form-control" id="jwt_token" value="<%= blockSummary.find(i=>i.label==='JWT Token').value %>">
-            <button class="btn btn-outline-secondary" type="button" id="copyJwt">Copy</button>
-          </div>
-          <small class="form-text text-muted mt-1">
-            You can paste this token into the DPAChain Authenticator desktop app to re-verify its signature.
-          </small>
-        </div>
-
-        <div class="mt-4">
-          <h5>All Fields</h5>
-          <div class="table-responsive">
-            <table class="table table-sm table-bordered mb-0">
-              <thead>
-                <tr>
-                  <th>Field</th>
-                  <th>Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% blockDetails.forEach(field => { %>
-                  <tr>
-                    <td class="text-nowrap"><%= field.label %></td>
-                    <td style="word-break: break-all;"><%= field.value %></td>
-                  </tr>
-                <% }); %>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+  <% if (typeof error !=='undefined' ) { %>
+    <div class="alert alert-danger mt-4">
+      <%= error.msg %>
     </div>
+    <% } %>
 
-    <script>
-      document.getElementById('copyJwt').addEventListener('click', function() {
-        const jwtInput = document.getElementById('jwt_token');
-        jwtInput.select();
-        document.execCommand('copy');
-        this.textContent = 'Copied!';
-        setTimeout(() => { this.textContent = 'Copy'; }, 2000);
-      });
-    </script>
-  <% } %>
+      <% if (typeof blockSummary !=='undefined' ) { %>
+        <div class="card mt-4">
+          <div class="card-body">
+            <h4 class="card-title">
+              Diploma Details
+              <span class="badge bg-success ms-2">Valid ✓</span>
+            </h4>
 
-  <a href="/user" class="btn btn-secondary mt-4">Back to User Home</a>
+            <div class="row mt-3">
+              <% blockSummary.forEach(item=> { %>
+                <div class="col-md-6 mb-2">
+                  <strong>
+                    <%= item.label %>:
+                  </strong>
+                  <%= item.value %>
+
+                    <% if (item.label==='PDF Hash' ) { %>
+                      <form id="checkPdfForm" class="mt-2" enctype="multipart/form-data">
+                        <input type="file" name="pdf_file" accept="application/pdf" required
+                          class="form-control form-control-sm mb-2">
+                        <button type="submit" class="btn btn-sm btn-primary">Calculate PDF Hash</button>
+                      </form>
+
+                      <div id="pdfHashResult" class="mt-2"></div>
+                      <% } %>
+
+                </div>
+                <% }); %>
+            </div>
+
+            <div class="mt-4">
+              <label for="jwt_token" class="form-label"><strong>JWT Token</strong></label>
+              <div class="input-group">
+                <input type="text" readonly class="form-control" id="jwt_token"
+                  value="<%= blockDetails.find(i=>i.label==='JWT Token').value %>">
+                <button class="btn btn-outline-secondary" type="button" id="copyJwt">Copy</button>
+              </div>
+              <small class="form-text text-muted mt-1">
+                You can paste this token into the DPAChain Authenticator desktop app to re-verify its signature.
+              </small>
+            </div>
+
+            <div class="mt-4">
+              <h5>All Fields</h5>
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered mb-0">
+                  <thead>
+                    <tr>
+                      <th>Field</th>
+                      <th>Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% blockDetails.forEach(field=> { %>
+                      <tr>
+                        <td class="text-nowrap">
+                          <%= field.label %>
+                        </td>
+                        <td style="word-break: break-all;">
+                          <%= field.value %>
+                        </td>
+                      </tr>
+                      <% }); %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <script>
+          document.getElementById('copyJwt').addEventListener('click', function () {
+            const jwtInput = document.getElementById('jwt_token');
+            jwtInput.select();
+            document.execCommand('copy');
+            this.textContent = 'Copied!';
+            setTimeout(() => { this.textContent = 'Copy'; }, 2000);
+          });
+
+          // Nowy skrypt: Obsługa uploadu i porównania hash
+          const checkPdfForm = document.getElementById('checkPdfForm');
+          if (checkPdfForm) {
+            checkPdfForm.addEventListener('submit', async (e) => {
+              e.preventDefault();
+              const formData = new FormData(checkPdfForm);
+              try {
+                const response = await fetch('/user/calculate_pdf_hash_local', {
+                  method: 'POST',
+                  body: formData
+                });
+
+                const data = await response.json();
+
+                const expectedHash = "<%= blockDetails.find(i => i.label === 'PDF Hash').value %>";
+                const resultDiv = document.getElementById('pdfHashResult');
+
+                if (response.ok && data.calculated_pdf_hash) {
+                  if (data.calculated_pdf_hash === expectedHash) {
+                    resultDiv.innerHTML = '<span class="badge bg-success">✔ Hash matches!</span><br><small>Generated hash: ' + data.calculated_pdf_hash + '</small>';
+                  } else {
+                    resultDiv.innerHTML = '<span class="badge bg-danger">✖ Hash does not match!</span><br><small>Generated hash: ' + data.calculated_pdf_hash + '</small>';
+                  }
+                } else {
+                  resultDiv.innerHTML = '<span class="text-danger">Failed to calculate hash.</span>';
+                }
+              } catch (error) {
+                document.getElementById('pdfHashResult').innerHTML = '<span class="text-danger">Error: ' + error.message + '</span>';
+              }
+            });
+          }
+        </script>
+        <% } %>
+
+          <a href="/user" class="btn btn-secondary mt-4">Back to User Home</a>
 </div>

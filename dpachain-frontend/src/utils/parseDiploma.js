@@ -32,6 +32,7 @@ const orderSummary = [
     { key: 'supervisor', label: 'Supervisor' },
     { key: 'university', label: 'University' },
     { key: 'reviewer', label: 'Reviewer' },
+    { key: 'pdf_hash', label: 'PDF Hash' },
 ];
 
 function parseDiplomaSummary(block) {

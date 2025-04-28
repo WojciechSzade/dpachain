@@ -23,7 +23,7 @@ def get_block_by_hash(block_hash, block_service: IBlockService = Depends(get_blo
         return handle_error(e)
 
 
-@router.get("/user/calculate_pdf_hash")
+@router.post("/user/calculate_pdf_hash")
 def calculate_pdf_hash(pdf_file: Annotated[bytes, File()], block_service: IBlockService = Depends(get_block_service)):
     try:
         return {"calculated_pdf_hash": block_service.calculate_pdf_hash(pdf_file=pdf_file)}

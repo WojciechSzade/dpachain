@@ -74,7 +74,6 @@ def unban_peer(nickname: str, peer_service: IPeerService = Depends(get_peer_serv
 
 @router.post("/admin/sync_chain")
 async def sync_chain(node_service: INodeService = Depends(get_node_service)):
-    logger.info("Syncing chain...")
     try:
         return await node_service.sync_chain()
     except Exception as e:
