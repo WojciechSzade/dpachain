@@ -23,7 +23,15 @@ The system stores thesis metadata in a distributed ledger backed by a custom blo
 └── README.md
 ```
 
+## Prerequisites
+To run the system, you need to have Docker and Docker Compose installed on your machine. You can find installation instructions for your operating system in the [Docker documentation](https://docs.docker.com/get-docker/).
+
+The RSA keys are provided and stored in the `dpachain-api/signing_keys` directory. 
+
+
 ## 🚀 Running the System
+
+
 To run the **first node** of the system, use the following command:
 
 ```bash
