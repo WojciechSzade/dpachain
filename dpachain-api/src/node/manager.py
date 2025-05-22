@@ -87,7 +87,7 @@ class NodeManager(INodeManager):
         for peer in peer_list:
             try:
                 pipe = await self.connect_to_peer(peer)
-            except PeerUnavailableError:
+            except:
                 continue
             try:
                 chain_size = await self.protocol_manager.request_chain_size(pipe)

@@ -1,0 +1,11 @@
+@startuml
+(Zarządzanie listą uczestników) as lista
+
+:Administrator: -up-> (Dodanie informacji o pracy dyplomowej)
+:Administrator: -right-> (Wyświetlenie listy wszystkich prac dyplomowych)
+:Administrator: -left-> (Wyświetlenie informacji o danej pracy dyplomowej)
+:Administrator: -down-> lista
+lista ..> (Dodawanie nowych uczestników) : <<invokes>>
+lista ..> (Usuwanie uczestników) : <<invokes>>
+lista ..> (Zmiana statusu uczestników) : <<invokes>>
+@enduml

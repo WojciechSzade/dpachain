@@ -21,6 +21,13 @@ router.get('/validate_diploma', async (req, res) => {
       `${API_BASE_URL}/user/get_block_by_hash?block_hash=${encodeURIComponent(block_hash)}`
     );
     const data = await apiRes.json();
+    if (apiRes.status === 404) {
+      return res.render('user/validate_diploma', {
+        title: 'Validate a Diploma',
+        error: { msg: "A diploma with specified hash doesn't exists" },
+        apiBaseUrl: API_BASE_URL
+      });
+    }
     if (!apiRes.ok || !data.block) {
       const msg = data.detail || 'Error fetching diploma.';
       return res.render('user/validate_diploma', { title: 'Validate a Diploma', error: { msg }, apiBaseUrl: API_BASE_URL });

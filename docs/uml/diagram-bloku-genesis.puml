@@ -1,0 +1,15 @@
+@startuml
+skin rose
+
+class GenesisBlock {
+  +int _id
+  +dict keys
+  +str hash
+  +str signed_hash
+  +str jwt_token
+  --
+  +as_dict() : dict
+  +{static} from_dict(data: dict) : GenesisBlock
+  +{static} create_block(keys_file: str, signing_function: Callable, jwt_encoding_function: Callable) : GenesisBlock
+}
+@enduml

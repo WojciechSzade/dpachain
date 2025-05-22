@@ -1,6 +1,0 @@
-@startuml
-
-:Pracownik: -> (Dodanie informacji o pracy dyplomowej)
-:Pracownik: -> (Wyświetlenie listy wszystkich prac dyplomowych)
-:Pracownik: -> (Wyświetlenie informacji o danej pracy dyplomowej)
-@enduml

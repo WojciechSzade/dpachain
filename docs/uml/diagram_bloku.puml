@@ -1,0 +1,34 @@
+@startuml
+skin rose
+
+class Block {
+  +str previous_block     
+  +int _id                 
+  +float timestamp                 
+  +str diploma_type                
+  +str pdf_hash                    
+  +List[str] authors               
+  +List[str] authors_id       
+  +datetime date_of_defense
+  +str title                       
+  +str language            
+  +str discipline
+  +int is_defended                
+  +str university
+  +str faculty
+  +List[str] supervisors
+  +List[str] reviewers           
+  +dict additional_info         
+  +str: peer_author
+  +str chain_version               
+  +str: hash
+  +str: signed_hash
+  +str: jwt_token
+  --
+  +{static} calculate_merkle_root(data: list) : str
+  +{static} calculate_pdf_hash(pdf_file: bytes) : str
+  +as_dict(self) : dict
+  +{static} from_dict(cls, data: dict) : Block
+}
+
+@enduml

@@ -1,5 +1,0 @@
-@startuml
-
-:Klient:
-Klient -> (Sprawdzenie autentyczności pracy dyplomowej)
-@enduml

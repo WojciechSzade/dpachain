@@ -50,7 +50,7 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("DPAChain Authenticator")
-        self.geometry("2560x1440")
+        self.geometry("4560x2840")
         self.minsize(700, 600)
 
         self.uploaded_pdf_bytes = None

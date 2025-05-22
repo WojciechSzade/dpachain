@@ -1,7 +1,0 @@
-@startuml
-
-
-:Pracodawca: -> (Potwierdzenie autentyczności pracy dyplomowej <u>studenta</u>)
-(Potwierdzenie autentyczności pracy dyplomowej <u>studenta</u>) .> (Potwierdzenie powiązania z pracą przedstawionego dokumentu z treścią pracy): <<invokes>>
-
-@enduml
